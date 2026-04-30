@@ -1,20 +1,23 @@
 # OFC — Online Football Club Manager
 
-A complete backend prototype + mobile-first frontend for an online football
-club management game. Build a club from scratch, manage a fully procedural
-roster, simulate matches, trade players, and progress through divisions.
+A complete backend + mobile app for an online football club management game.
+Build a club from scratch, manage a fully procedural roster, simulate matches,
+trade players, and progress through divisions.
 
-> **Status:** functional prototype. Single Go service, in-memory store,
-> mobile-first PWA frontend. Designed so the persistence layer can be swapped
-> to MongoDB or Firestore by implementing a single interface.
+> **Status:** functional prototype. Go backend, in-memory store, Flutter
+> mobile app for Android & iOS, plus a mobile-first PWA frontend served by
+> the same backend. The persistence layer is designed to be swapped to
+> MongoDB or Firestore by implementing a single interface.
 
 ## Stack
 
 - **Backend:** Go 1.24 (`net/http` with method-based routing, `crypto/pbkdf2`)
 - **Storage:** In-memory implementation behind `store.Store` (interface ready
   for MongoDB / Firestore drivers)
-- **Frontend:** Mobile-first PWA — vanilla HTML / CSS / JS, no build step,
-  installable on a phone home screen
+- **Mobile app (`/mobile`):** Flutter — single Dart codebase that targets
+  both Android (APK / AAB) and iOS (IPA / TestFlight)
+- **Web prototype (`/web`):** Mobile-first PWA — vanilla HTML / CSS / JS,
+  no build step, installable on a phone home screen
 - **Auth:** PBKDF2-SHA256 password hashing + opaque bearer tokens
 
 No third-party Go dependencies.
@@ -199,26 +202,48 @@ players sold. Rewards are claimed on demand.
 - Match outcomes computed server-side; clients receive results, never
   upload them
 
-## Frontend (mobile-first)
+## Mobile app (Android & iOS)
 
-The web app under `web/` is a tiny PWA designed for phone screens:
-- Single-page app with bottom navigation (Home / Squad / Match / Market / Packs)
-- Touch-friendly tile lists, large tap targets, safe-area padding for
-  notched devices
+Full Flutter app under [`mobile/`](mobile/) — see
+[mobile/README.md](mobile/README.md) for the full setup.
+
+Quick start:
+
+```bash
+cd mobile
+flutter create --org com.matheusrrolim --project-name ofc \
+  --platforms=android,ios .
+flutter pub get
+flutter run                                            # iOS simulator
+flutter run -d emulator-5554                           # Android emulator
+flutter build apk --release    # → build/app/outputs/flutter-apk/app-release.apk
+flutter build ios --release    # open ios/Runner.xcworkspace in Xcode
+```
+
+Highlights:
+- Bottom-nav scaffold (Home / Squad / Match / Market / Packs)
+- Persistent login via `shared_preferences`
+- Match simulation result screen with KPI grid + minute-by-minute events
+- Pack opening reveal flow
+- Marketplace with buy/cancel
+- Pull-to-refresh on every list, native dark theme
+
+## Web prototype (mobile-first)
+
+The web app under `web/` is a tiny PWA served straight by the Go backend:
+- Single-page app with bottom navigation
+- Touch-friendly tile lists, safe-area padding for notched devices
 - Auto-login from saved bearer token in `localStorage`
-- No bundler — open with any browser
-
-Hooks expected by future Unity / Flutter clients are the same JSON API
-listed above.
+- No bundler — open with any browser at `http://localhost:8080`
 
 ## Roadmap (not implemented yet)
 
 - Persistent storage adapter (MongoDB driver)
 - Tournaments (knockout brackets)
 - Live multiplayer match flow
-- Cosmetic store (kits, logos)
+- Cosmetic store (kits, logos) in the mobile app
 - Anti-cheat: per-action rate limiting, audit log
-- Push notifications via PlayFab/Firebase
+- Push notifications via FCM / APNs
 
 ## License
 
