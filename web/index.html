@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0b132b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>OFC — Online Football Club Manager</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Auth screen -->
+    <section id="screen-auth" class="screen active">
+      <div class="hero">
+        <div class="logo">⚽</div>
+        <h1>OFC Manager</h1>
+        <p class="muted">Build your club. Win the league.</p>
+      </div>
+      <div class="card">
+        <div class="tabs">
+          <button data-tab="login" class="tab active">Login</button>
+          <button data-tab="register" class="tab">Register</button>
+        </div>
+        <form id="login-form" class="form">
+          <label>Email<input type="email" name="email" required autocomplete="email" /></label>
+          <label>Password<input type="password" name="password" required minlength="6" autocomplete="current-password" /></label>
+          <button class="btn primary" type="submit">Sign in</button>
+        </form>
+        <form id="register-form" class="form hidden">
+          <label>Username<input type="text" name="username" required autocomplete="username" /></label>
+          <label>Email<input type="email" name="email" required autocomplete="email" /></label>
+          <label>Club name (optional)<input type="text" name="clubName" autocomplete="off" /></label>
+          <label>Password<input type="password" name="password" required minlength="6" autocomplete="new-password" /></label>
+          <button class="btn primary" type="submit">Create club</button>
+        </form>
+        <p id="auth-error" class="error"></p>
+      </div>
+    </section>
+
+    <!-- Main app -->
+    <section id="screen-app" class="screen">
+      <header class="topbar">
+        <div>
+          <div class="club-name" id="header-club">—</div>
+          <div class="muted small" id="header-user">—</div>
+        </div>
+        <div class="balances">
+          <span class="bal soft">⛁ <span id="bal-soft">0</span></span>
+          <span class="bal premium">★ <span id="bal-premium">0</span></span>
+        </div>
+      </header>
+
+      <main id="content"></main>
+
+      <nav class="bottombar">
+        <button data-view="home" class="nav active"><span>🏠</span><span>Home</span></button>
+        <button data-view="squad" class="nav"><span>👥</span><span>Squad</span></button>
+        <button data-view="match" class="nav"><span>⚽</span><span>Match</span></button>
+        <button data-view="market" class="nav"><span>💱</span><span>Market</span></button>
+        <button data-view="packs" class="nav"><span>🎁</span><span>Packs</span></button>
+      </nav>
+    </section>
+
+    <div id="toast" class="toast"></div>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

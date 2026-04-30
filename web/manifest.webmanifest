@@ -1,0 +1,10 @@
+{
+  "name": "OFC Manager",
+  "short_name": "OFC",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b132b",
+  "theme_color": "#0b132b",
+  "icons": []
+}

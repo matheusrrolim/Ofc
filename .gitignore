@@ -1,0 +1,21 @@
+# Binaries
+/bin/
+/ofc
+/server
+*.exe
+*.test
+*.out
+
+# Data
+/data/
+*.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Env
+.env
+.env.local
