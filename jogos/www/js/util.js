@@ -61,9 +61,13 @@
 
   /* Pedra de dominó. vertical=true desenha em pé (mão do jogador). */
   const PIPS = { 0: [], 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-  function half(n) {
+  // Pedra deitada: as bolinhas giram junto com a pedra (90°), em vez de
+  // ficarem na posição da pedra em pé. Assim o 6 vira duas fileiras de 3, etc.
+  const turn90 = (i) => (i % 3) * 3 + (2 - Math.floor(i / 3));
+  function half(n, lying) {
+    const on = lying ? PIPS[n].map(turn90) : PIPS[n];
     const h = el('div', { class: 'half' });
-    for (let i = 0; i < 9; i++) h.append(el('span', { class: PIPS[n].includes(i) ? 'pip on' : 'pip' }));
+    for (let i = 0; i < 9; i++) h.append(el('span', { class: on.includes(i) ? 'pip on' : 'pip' }));
     return h;
   }
   function tile(a, b, opts = {}) {
@@ -71,7 +75,7 @@
       class: 'tile' + (opts.vertical ? ' v' : '') + (opts.cls ? ' ' + opts.cls : ''),
       onclick: opts.onclick,
       'data-id': opts.id,
-    }, half(a), el('i', { class: 'bar' }), half(b));
+    }, half(a, !opts.vertical), el('i', { class: 'bar' }), half(b, !opts.vertical));
   }
 
   /* Carta de baralho. */
