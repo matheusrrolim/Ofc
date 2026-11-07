@@ -7,6 +7,9 @@ on:
       - '.github/workflows/jogos-android.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -36,6 +39,13 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      # Chave de debug fixa: assim cada APK novo instala por cima do anterior
+      # sem precisar desinstalar. (Para a Play Store será usada outra chave.)
+      - name: Usar chave de debug fixa
+        run: |
+          mkdir -p ~/.android
+          cp build/debug.keystore ~/.android/debug.keystore
+
       - name: Compilar APK
         working-directory: jogos/android
         run: ./gradlew assembleDebug --no-daemon
@@ -48,3 +58,16 @@ jobs:
           name: mesa-de-jogos-apk
           path: jogos/mesa-de-jogos.apk
           retention-days: 30
+
+      # Publica o APK num link fixo, que baixa sem login:
+      # https://github.com/<dono>/<repo>/releases/download/apk/mesa-de-jogos.apk
+      - name: Publicar link de download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete apk --yes --cleanup-tag || true
+          gh release create apk mesa-de-jogos.apk \
+            --target "$GITHUB_SHA" \
+            --title "Mesa de Jogos (Android)" \
+            --notes "APK de teste gerado em $(date -u '+%d/%m/%Y %H:%M') UTC a partir de ${GITHUB_SHA::7}. Baixe o mesa-de-jogos.apk abaixo e instale no celular." \
+            --prerelease

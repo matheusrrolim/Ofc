@@ -66,11 +66,14 @@ npm run serve     # abre em http://localhost:8080
 ## Mandar para alguém testar
 
 ### Android (APK)
-A cada push na pasta `jogos/`, o GitHub Actions compila o APK
-(workflow **Mesa de Jogos - APK Android**). Na página da execução, baixe o
-artefato `mesa-de-jogos-apk`, descompacte o `.zip` e mande o
-`mesa-de-jogos.apk` (por WhatsApp, por exemplo). No celular, é preciso
-permitir "instalar apps de fontes desconhecidas".
+A cada push na pasta `jogos/`, o GitHub Actions compila o APK e publica num
+link fixo, que baixa sem precisar de login:
+
+**https://github.com/matheusrrolim/Ofc/releases/download/apk/mesa-de-jogos.apk**
+
+Abra esse link no celular Android (ou mande pelo WhatsApp). Na primeira vez,
+o Android pede para permitir "instalar apps desta fonte". As versões novas
+instalam por cima da anterior.
 
 Para gerar na sua máquina (precisa do Android Studio):
 
