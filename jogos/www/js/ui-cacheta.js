@@ -42,7 +42,7 @@
       return el('div', { class: `seat seat-${pos}` + (turn ? ' turn' : '') },
         el('div', { class: 'seat-name' }, p.name),
         el('div', { class: 'seat-cards' }, p.hand.map(() => el('span', { class: 'mini-card' }))),
-        el('div', { class: 'seat-count' }, `${p.hand.length} cartas`));
+        el('div', { class: 'seat-count' }, `${p.hand.length} ${p.hand.length === 1 ? 'carta' : 'cartas'}`));
     }
 
     function render() {

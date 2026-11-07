@@ -117,11 +117,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tile .bar { width: 1px; align-self: stretch; background: #b9b09a; margin: 2px 0; }
 .tile.v { flex-direction: column; }
 .tile.v .bar { width: auto; height: 1px; margin: 0 2px; align-self: stretch; }
-.board { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px; max-width: 100%; }
+.board { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 100%; }
+.snake { display: inline-flex; flex-direction: column; gap: 2px; }
+.snake-row { display: flex; align-items: center; gap: 2px; }
+.snake-row.back { justify-content: flex-end; }
+.board .tile.end { box-shadow: 0 0 0 2px var(--gold), 0 0 10px rgba(245, 197, 66, .7); animation: pulse 1s infinite alternate; }
+.side-choice { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .board .tile { --s: 15px; }
 .board .tile.last { box-shadow: 0 0 0 2px var(--gold), 0 2px 3px rgba(0, 0, 0, .35); }
 .board-empty { color: rgba(255, 255, 255, .4); font-style: italic; }
-.side-btn { border: 0; background: var(--gold); color: #2a1d00; font-weight: 800; border-radius: 8px; padding: 6px 8px; font-size: 12px; animation: pulse 1s infinite alternate; }
+.side-btn { border: 0; background: var(--gold); color: #2a1d00; font-weight: 800; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
 .domino-hand .tile { --s: 26px; transition: transform .12s; }
 .domino-hand .tile.dim { opacity: .55; }
 .domino-hand .tile.playable { box-shadow: 0 0 0 2px rgba(245, 197, 66, .7), 0 3px 4px rgba(0, 0, 0, .4); }

@@ -30,7 +30,7 @@
       return el('div', { class: `seat seat-${pos}` + (turn ? ' turn' : '') },
         el('div', { class: 'seat-name' }, p.name),
         el('div', { class: 'seat-backs' }, p.hand.map(() => el('span', { class: 'mini-back' }))),
-        el('div', { class: 'seat-count' }, `${p.hand.length} pedras`));
+        el('div', { class: 'seat-count' }, `${p.hand.length} ${p.hand.length === 1 ? 'pedra' : 'pedras'}`));
     }
 
     function board() {
@@ -40,17 +40,49 @@
         class: 'side-btn',
         onclick: () => humanPlay(selected, side),
       }, label);
-      const wrap = el('div', { class: 'board' });
-      if (!h.chain.length) {
-        wrap.append(el('div', { class: 'board-empty' }, 'Mesa vazia'));
-      } else {
-        if (chooseSide) wrap.append(sideBtn('left', '◀ aqui'));
-        for (const c of h.chain) {
-          wrap.append(tile(c.l, c.r, { vertical: c.dbl, cls: h.lastMove && h.lastMove.id === c.id ? 'last' : '' }));
-        }
-        if (chooseSide) wrap.append(sideBtn('right', 'aqui ▶'));
+      if (!h.chain.length) return el('div', { class: 'board' }, el('div', { class: 'board-empty' }, 'Mesa vazia'));
+
+      // Fila em "cobra": vai para a direita, vira na borda e volta pela linha
+      // de baixo, sempre ponta com ponta.
+      const avail = boardWidth();
+      const rows = [[]];
+      let w = 0;
+      for (const c of h.chain) {
+        const tw = (c.dbl ? TILE_SHORT : TILE_LONG) + TILE_GAP;
+        if (w + tw > avail && rows[rows.length - 1].length) { rows.push([]); w = 0; }
+        rows[rows.length - 1].push(c);
+        w += tw;
       }
-      return wrap;
+      const first = h.chain[0].id;
+      const last = h.chain[h.chain.length - 1].id;
+      const snake = el('div', { class: 'snake' },
+        rows.map((row, ri) => {
+          const back = ri % 2 === 1; // linhas ímpares andam da direita para a esquerda
+          const cells = (back ? row.slice().reverse() : row).map((c) => tile(back ? c.r : c.l, back ? c.l : c.r, {
+            vertical: c.dbl,
+            cls: [
+              h.lastMove && h.lastMove.id === c.id ? 'last' : '',
+              chooseSide && (c.id === first || c.id === last) ? 'end' : '',
+            ].join(' '),
+          }));
+          return el('div', { class: 'snake-row' + (back ? ' back' : '') }, cells);
+        }));
+      return el('div', { class: 'board' },
+        snake,
+        chooseSide ? el('div', { class: 'side-choice' },
+          sideBtn('left', `Jogar na ponta ${h.left}`),
+          sideBtn('right', `Jogar na ponta ${h.right}`)) : null);
+    }
+
+    // Medidas das pedras da mesa (iguais ao CSS de .board .tile).
+    const TILE_LONG = 35;
+    const TILE_SHORT = 19;
+    const TILE_GAP = 2;
+    function boardWidth() {
+      const center = container.querySelector('.table-center');
+      if (center && center.clientWidth) return center.clientWidth - 16;
+      const phone = document.getElementById('phone');
+      return Math.max(160, (phone ? phone.clientWidth : window.innerWidth) - 2 * 64 - 40);
     }
 
     function handView() {
