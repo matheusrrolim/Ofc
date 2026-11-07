@@ -1,7 +1,7 @@
 /* Tela da Cacheta. Funciona offline (bots) e online, pelo controle em ctx.table. */
 (function (root) {
   'use strict';
-  const { el, playingCard, cardBack, modal, toast, wallet } = root.U;
+  const { el, playingCard, cardBack, modal, toast, wallet, avatar } = root.U;
   const C = root.Cacheta;
 
   const PRIZE = 60;
@@ -50,6 +50,7 @@
       const p = m.players[i];
       const turn = !m.hand.over && m.hand.current === i;
       return el('div', { class: `seat seat-${pos}` + (turn ? ' turn' : '') },
+        avatar(p.name, i),
         el('div', { class: 'seat-name' }, p.name),
         el('div', { class: 'seat-cards' }, p.hand.map(() => el('span', { class: 'mini-card' }))),
         el('div', { class: 'seat-count' }, `${p.hand.length} ${p.hand.length === 1 ? 'carta' : 'cartas'}`));
@@ -76,7 +77,6 @@
           el('header', { class: 'game-bar' },
             el('button', { class: 'icon-btn', onclick: leave, 'aria-label': 'Voltar' }, '←'),
             el('div', { class: 'game-title' }, 'Cacheta', table.online ? el('span', { class: 'online-tag' }, 'online') : null),
-            social.chatButton(),
             el('div', { class: 'score' }, `Mão ${m.handNo} · Vitórias ${m.players[0].wins}`)),
           el('div', { class: 'table' },
             m.players.length === 2 ? seat(1, 'top') : [seat(2, 'top'), seat(3, 'left'), seat(1, 'right')],
@@ -86,7 +86,8 @@
                   cardBack(), el('small', {}, `Monte (${h.stock.length})`)),
                 el('div', { class: 'pile' + (drawPhase && top ? ' active' : ''), onclick: () => humanDraw('discard') },
                   top ? playingCard(top) : el('div', { class: 'card empty' }), el('small', {}, 'Lixo')))),
-            social.emojiButton()),
+            el('div', { class: 'my-seat' }, avatar(m.players[0].name, 0), el('span', {}, 'Você')),
+            social.toolbar()),
           el('div', { class: 'status' + (myTurn ? ' mine' : '') }, status),
           el('div', { class: 'me' + (myTurn ? ' turn' : '') },
             el('div', { class: 'hand card-hand' },

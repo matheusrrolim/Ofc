@@ -217,3 +217,23 @@ test('mesas: visão mano a mano esconde a mão do rival e o monte', () => {
   assert.strictEqual(v.hand.boneyard.length, 14);
   assert.ok(!Array.isArray(v.hand.boneyard));
 });
+
+test('dominó mano a mano: o jogador escolhe qual pedra do monte comprar', () => {
+  for (let g = 0; g < 200; g++) {
+    const m = Domino.startHand(Domino.newMatch(['a', 'b']));
+    while (!m.hand.over) {
+      const pi = m.hand.current;
+      if (Domino.canBuy(m, pi)) {
+        const h = m.hand;
+        const i = Math.floor(Math.random() * h.boneyard.length);
+        const want = h.boneyard[i];
+        assert.ok(Domino.buy(m, pi, i));
+        assert.strictEqual(m.players[pi].hand[m.players[pi].hand.length - 1], want);
+        assert.ok(!h.boneyard.includes(want));
+        continue;
+      }
+      const mv = Domino.botMove(m, pi);
+      if (mv) Domino.play(m, pi, mv.tile.id, mv.side); else Domino.pass(m, pi);
+    }
+  }
+});

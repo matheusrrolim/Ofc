@@ -5,7 +5,9 @@
  * frases prontas. No multiplayer online, `send` passa a mandar pela rede e
  * `receive` é chamado quando chega mensagem de outro jogador.
  *
- * Lugares: 0 = você (embaixo), 1 = direita, 2 = em cima, 3 = esquerda.
+ * Lugares: 0 = você (embaixo), 1 = direita, 2 = em cima, 3 = esquerda
+ * (mano a mano: 1 = em cima). As mensagens e emojis saem em balões em cima do
+ * avatar de quem mandou (elementos com data-avatar="lugar").
  */
 (function (root) {
   'use strict';
@@ -13,7 +15,6 @@
 
   const EMOJIS = ['👏', '😂', '😎', '🔥', '😱', '😡', '🤔', '😭', '🙏', '👍'];
   const QUICK = ['Boa jogada!', 'Vamos lá!', 'Que sorte, hein?', 'Tô pensando…', 'Kkkkk', 'Joga logo! 😅'];
-  const SEAT_SEL = { 0: '.me', 1: '.seat-right', 2: '.seat-top', 3: '.seat-left' };
 
   const BOT_LINES = {
     reply: ['Kkkk', 'Verdade!', 'Foco no jogo 😄', 'Hoje eu tô com sorte', 'Calma que a mão vira', 'Haha boa'],
@@ -40,10 +41,9 @@
 
     const later = (ms, f) => timers.push(setTimeout(() => { if (alive) f(); }, ms));
 
-    // Posição do lugar relativa à camada (que fica dentro da moldura do app).
+    // Posição do avatar do jogador relativa à moldura do app.
     function anchor(seat) {
-      const sel = seats === 2 ? { 0: '.me', 1: '.seat-top' }[seat] : SEAT_SEL[seat];
-      const e = document.querySelector(sel);
+      const e = document.querySelector(`[data-avatar="${seat}"]`);
       if (!e) return null;
       const r = e.getBoundingClientRect();
       const o = (document.getElementById('phone') || document.body).getBoundingClientRect();
@@ -56,10 +56,16 @@
       const b = el('div', { class: 'bubble' + (isEmoji ? ' emoji' : '') + (seat === 0 ? ' mine' : '') }, content);
       layer().append(b);
       const bw = b.offsetWidth;
-      const x = Math.min(Math.max(8, r.left + r.width / 2 - bw / 2), r.max - bw - 8);
-      const y = seat === 0 ? r.top - b.offsetHeight - 6 : r.top + r.height * 0.15;
+      const bh = b.offsetHeight;
+      const cx = r.left + r.width / 2;
+      const x = Math.min(Math.max(8, cx - bw / 2), r.max - bw - 8);
+      // Em cima do avatar; se não couber no topo da tela, embaixo dele.
+      let y = r.top - bh - 8;
+      if (y < 8) { y = r.top + r.height + 8; b.classList.add('below'); }
       b.style.left = x + 'px';
-      b.style.top = Math.max(8, y) + 'px';
+      b.style.top = y + 'px';
+      // A pontinha do balão aponta para o avatar.
+      b.style.setProperty('--tail', Math.min(Math.max(14, cx - x), bw - 14) + 'px');
       setTimeout(() => b.classList.add('out'), isEmoji ? 1800 : 2800);
       setTimeout(() => b.remove(), isEmoji ? 2200 : 3200);
     }
@@ -142,11 +148,26 @@
       return el('button', { class: 'emoji-fab', onclick: toggleEmojiBar, 'aria-label': 'Reagir com emoji' }, '😀');
     }
 
+    /** Chat e emojis juntos, no lado direito da mesa. */
+    function toolbar() {
+      return el('div', { class: 'side-tools' }, chatButton(), emojiButton());
+    }
+
     function toggleEmojiBar() {
       if (emojiBar) { emojiBar.remove(); emojiBar = null; return; }
       emojiBar = el('div', { class: 'emoji-bar' },
         EMOJIS.map((e) => el('button', { onclick: () => { sendEmoji(e); toggleEmojiBar(); } }, e)));
       layer().append(emojiBar);
+      // Abre ao lado dos botões da direita.
+      const fab = document.querySelector('.side-tools .emoji-fab');
+      const phone = (document.getElementById('phone') || document.body).getBoundingClientRect();
+      if (fab) {
+        const r = fab.getBoundingClientRect();
+        emojiBar.style.right = (phone.right - r.left + 8) + 'px';
+        emojiBar.style.bottom = 'auto';
+        // Alinha a parte de baixo da janela com o botão de emoji.
+        emojiBar.style.top = Math.max(8, r.bottom - phone.top - emojiBar.offsetHeight) + 'px';
+      }
     }
 
     let listEl = null;
@@ -195,7 +216,7 @@
       document.querySelectorAll('.bubble').forEach((b) => b.remove());
     }
 
-    return { chatButton, emojiButton, send, receive, react, event, destroy };
+    return { chatButton, emojiButton, toolbar, send, receive, react, event, destroy };
   }
 
   root.Social = { create, EMOJIS };

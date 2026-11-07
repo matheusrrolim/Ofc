@@ -33,14 +33,14 @@
       act(m, seat, a) {
         if (a.type === 'play') return D.play(m, seat, a.id, a.side);
         if (a.type === 'pass') return D.pass(m, seat);
-        if (a.type === 'buy') return D.buy(m, seat);
+        if (a.type === 'buy') return D.buy(m, seat, a.index);
         return false;
       },
       bot(m) {
         const pi = m.hand.current;
         const mv = D.botMove(m, pi);
         if (mv) return D.play(m, pi, mv.tile.id, mv.side);
-        if (D.canBuy(m, pi)) return D.buy(m, pi);
+        if (D.canBuy(m, pi)) return D.buy(m, pi, Math.floor(Math.random() * m.hand.boneyard.length));
         return D.pass(m, pi);
       },
       next(m) {

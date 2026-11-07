@@ -1,5 +1,5 @@
 /* Service worker: guarda os arquivos para o app abrir sem internet. */
-const CACHE = 'mesa-v4';
+const CACHE = 'mesa-v5';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png',
   'css/style.css',

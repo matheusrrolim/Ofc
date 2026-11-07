@@ -107,5 +107,12 @@
     },
   };
 
-  root.U = { el, store, toast, modal, layer, tile, playingCard, cardBack, wallet };
+  /* Avatar do jogador: bolinha colorida com a inicial do nome. */
+  const AVATAR_COLORS = ['#f5c542', '#4fb3e8', '#e8735a', '#9b7be8', '#5ac98a', '#e85a9b'];
+  function avatar(name, seat, color) {
+    const ini = String(name || '?').trim().charAt(0).toUpperCase() || '?';
+    return el('div', { class: 'avatar', 'data-avatar': seat, style: `--av:${color || AVATAR_COLORS[seat % AVATAR_COLORS.length]}` }, ini);
+  }
+
+  root.U = { el, store, toast, modal, layer, tile, playingCard, cardBack, wallet, avatar };
 })(this);

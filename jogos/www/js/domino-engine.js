@@ -158,10 +158,12 @@
     return !h.over && h.current === pi && h.boneyard.length > 0 && !movesFor(m, pi).length;
   }
 
-  function buy(m, pi) {
+  /** `index`: qual das pedras do monte (viradas para baixo) o jogador escolheu. */
+  function buy(m, pi, index) {
     if (!canBuy(m, pi)) return false;
     const h = m.hand;
-    m.players[pi].hand.push(h.boneyard.pop());
+    const i = Number.isInteger(index) && index >= 0 && index < h.boneyard.length ? index : h.boneyard.length - 1;
+    m.players[pi].hand.push(h.boneyard.splice(i, 1)[0]);
     h.lastMove = { pi, buy: true };
     return true;
   }

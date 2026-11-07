@@ -6,7 +6,7 @@
  */
 (function (root) {
   'use strict';
-  const { el, tile, modal, toast, wallet } = root.U;
+  const { el, tile, modal, toast, wallet, avatar } = root.U;
   const D = root.Domino;
   const Layout = root.DominoLayout;
 
@@ -48,6 +48,7 @@
       const turn = !m.hand.over && m.hand.current === i;
       const n = p.hand.length;
       return el('div', { class: `seat seat-${pos}` + (turn ? ' turn' : '') },
+        avatar(p.name, i),
         el('div', { class: 'seat-name' }, p.name, i === 2 && !solo() ? el('small', {}, ' · parceiro') : null),
         el('div', { class: 'seat-backs' }, p.hand.map(() => el('span', { class: 'mini-back' }))),
         el('div', { class: 'seat-count' }, `${n} ${n === 1 ? 'pedra' : 'pedras'}`));
@@ -105,6 +106,18 @@
       }
     }
 
+    /** Mano a mano: as pedras do monte viradas para baixo; o jogador escolhe uma. */
+    function buySheet(stock) {
+      return el('div', { class: 'buy-sheet' },
+        el('div', { class: 'buy-title' }, `Escolha uma pedra do monte (${stock})`),
+        el('div', { class: 'buy-grid' },
+          Array.from({ length: stock }, (_, i) => el('button', {
+            class: 'tile-back',
+            'aria-label': `Comprar a pedra ${i + 1} do monte`,
+            onclick: (e) => { e.currentTarget.classList.add('picked'); table.act({ type: 'buy', index: i }); },
+          }))));
+    }
+
     function handView() {
       const moves = D.movesFor(m, 0);
       const playable = new Set(moves.map((x) => x.tile.id));
@@ -127,7 +140,7 @@
       let status = lastMsg;
       if (myTurn) {
         if (canPlay) status = selected ? 'Toque em "aqui" na ponta onde quer jogar.' : 'Sua vez: toque numa pedra destacada.';
-        else status = mustBuy ? 'Nenhuma pedra encaixa: compre do monte.' : 'Você não tem pedra que encaixe.';
+        else status = mustBuy ? 'Nenhuma pedra encaixa: escolha uma pedra do monte.' : 'Você não tem pedra que encaixe.';
       }
       else if (!h.over && !lastMsg) status = `Vez de ${m.players[h.current].name}…`;
       container.replaceChildren(
@@ -135,7 +148,6 @@
           el('header', { class: 'game-bar' },
             el('button', { class: 'icon-btn', onclick: leave, 'aria-label': 'Voltar' }, '←'),
             el('div', { class: 'game-title' }, 'Dominó', table.online ? el('span', { class: 'online-tag' }, 'online') : null),
-            social.chatButton(),
             el('div', { class: 'score' },
               el('span', { class: 'us' }, `${us()} ${m.scores[0]}`), ' × ',
               el('span', { class: 'them' }, `${m.scores[1]} ${them()}`))),
@@ -143,11 +155,13 @@
             solo() ? seat(1, 'top') : [seat(2, 'top'), seat(3, 'left'), seat(1, 'right')],
             solo() ? el('div', { class: 'stock-tag' }, `Monte: ${stock}`) : null,
             el('div', { class: 'table-center' }, el('div', { class: 'board-area' })),
-            social.emojiButton()),
+            el('div', { class: 'my-seat' }, avatar(m.players[0].name, 0), el('span', {}, 'Você')),
+            social.toolbar(),
+            mustBuy ? buySheet(stock) : null),
           el('div', { class: 'status' + (myTurn ? ' mine' : '') }, status),
           el('div', { class: 'me' + (myTurn ? ' turn' : '') },
             handView(),
-            mustBuy ? el('button', { class: 'btn btn-primary', onclick: () => table.act({ type: 'buy' }) }, `Comprar do monte (${stock})`)
+            mustBuy ? null
               : myTurn && !canPlay ? el('button', { class: 'btn btn-primary', onclick: humanPass }, 'Passar a vez') : null)));
       drawBoard();
       if (h.over) setTimeout(showResult, 500);

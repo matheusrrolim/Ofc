@@ -180,10 +180,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* ---------- chat e emojis ---------- */
 .chat-btn { position: relative; }
 .badge-dot { position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--red); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
-.emoji-fab { position: absolute; right: 10px; bottom: 10px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .35); font-size: 24px; box-shadow: var(--shadow); z-index: 3; }
+.emoji-fab { width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .35); font-size: 24px; box-shadow: var(--shadow); }
 .emoji-fab:active { transform: scale(.92); }
 .emoji-bar {
-  position: fixed; left: 0; right: 0; margin: 0 auto; width: fit-content; bottom: calc(150px + var(--safe-bottom)); z-index: 40;
+  position: fixed; right: 64px; bottom: 200px; z-index: 40;
   display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 8px; border-radius: 18px;
   background: var(--panel); border: 1px solid rgba(255, 255, 255, .12); box-shadow: var(--shadow); animation: pop .15s;
 }
@@ -272,5 +272,36 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .board-area .tile .pip { margin: auto; width: 72%; height: auto; aspect-ratio: 1; }
 
 /* ---------- mano a mano ---------- */
-.table.solo { grid-template-columns: 12px 1fr 12px; }
+.table.solo { grid-template-columns: 58px 1fr 58px; }
 .stock-tag { position: absolute; left: 10px; top: 10px; font-size: 12px; font-weight: 700; color: var(--muted); background: rgba(0, 0, 0, .3); padding: 3px 9px; border-radius: 999px; }
+
+/* ---------- avatares, balões e barra da direita ---------- */
+.avatar {
+  width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+  background: var(--av, var(--gold)); color: #14110a; font-weight: 900; font-size: 17px;
+  border: 2px solid rgba(255, 255, 255, .85); box-shadow: 0 2px 6px rgba(0, 0, 0, .4);
+}
+.seat.turn .avatar { box-shadow: 0 0 0 3px var(--gold), 0 0 14px rgba(245, 197, 66, .7); }
+.my-seat { position: absolute; left: 10px; bottom: 10px; display: flex; flex-direction: column; align-items: center; gap: 2px; z-index: 3; font-size: 12px; font-weight: 700; color: var(--muted); }
+.side-tools { position: absolute; right: 8px; bottom: 10px; display: flex; flex-direction: column; gap: 8px; z-index: 4; }
+.side-tools .icon-btn { width: 44px; height: 44px; font-size: 22px; background: rgba(0, 0, 0, .35); box-shadow: var(--shadow); }
+.seat-right { padding-bottom: 110px; } /* deixa espaço para a barra da direita */
+.table.solo .seat-right { padding-bottom: 8px; }
+.bubble { --tail: 50%; }
+.bubble::after { content: ""; position: absolute; left: var(--tail); bottom: -6px; width: 12px; height: 12px; background: inherit; transform: translateX(-50%) rotate(45deg); border-radius: 2px; }
+.bubble.below::after { bottom: auto; top: -6px; }
+.bubble.emoji::after { display: none; }
+
+/* ---------- mano a mano: escolher a pedra do monte ---------- */
+.buy-sheet {
+  position: absolute; left: 8px; right: 60px; bottom: 8px; z-index: 5; padding: 10px 12px 12px; border-radius: 16px;
+  background: rgba(6, 38, 26, .94); border: 1px solid rgba(245, 197, 66, .5); box-shadow: var(--shadow); animation: up .2s;
+}
+.buy-title { font-weight: 800; color: var(--gold); font-size: 14px; margin-bottom: 8px; text-align: center; }
+.buy-grid { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.tile-back {
+  width: 28px; height: 52px; border-radius: 6px; padding: 0; cursor: pointer;
+  border: 2px solid #f4efe0; background: repeating-linear-gradient(135deg, #1d5c41 0 4px, #164a34 4px 8px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .45); transition: transform .12s;
+}
+.tile-back:active, .tile-back.picked { transform: translateY(-6px) scale(1.08); border-color: var(--gold); }
