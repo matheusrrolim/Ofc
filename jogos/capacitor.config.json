@@ -1,0 +1,7 @@
+{
+  "appId": "com.mesadejogos.app",
+  "appName": "Mesa de Jogos",
+  "webDir": "www",
+  "android": { "backgroundColor": "#06261a" },
+  "ios": { "backgroundColor": "#06261a" }
+}
