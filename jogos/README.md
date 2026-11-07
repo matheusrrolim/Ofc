@@ -21,6 +21,17 @@ Toda mesa tem:
 Por enquanto quem responde são os bots. No multiplayer online, o mesmo módulo
 (`social.js`) passa a enviar e receber pela rede.
 
+## Servidor online
+
+O multiplayer roda em **https://mesa-de-jogos.onrender.com** (Render, plano
+grátis). Esse endereço também abre o app direto no navegador, inclusive no
+iPhone (Safari → Compartilhar → Adicionar à Tela de Início).
+
+Configuração do serviço no Render: Root Directory `jogos`, Build
+`npm ci --omit=dev`, Start `node server/server.js`, branch
+`ccr-feae2fa3-2llp75`. Como foi criado a partir do repositório público, depois
+de cada atualização é preciso clicar em **Manual Deploy → Deploy latest commit**.
+
 ## Como funciona
 
 O app é feito em HTML/CSS/JavaScript puro (sem etapa de build) e empacotado

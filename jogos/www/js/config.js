@@ -4,4 +4,4 @@
  * O build do GitHub Actions preenche com a variável MESA_SERVER_URL do repositório.
  * No navegador, se ficar vazio, o app usa o próprio site como servidor.
  */
-window.MESA_SERVER = '';
+window.MESA_SERVER = 'https://mesa-de-jogos.onrender.com';
