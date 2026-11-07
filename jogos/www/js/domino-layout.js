@@ -48,6 +48,7 @@
       r: rect(c[0], c[1], horiz ? len : wid, horiz ? wid : len),
       end: [P[0] + dx * (gap + len), P[1] + dy * (gap + len)],
       dir,
+      dblC: dbl ? c : null, // centro da carroça atravessada (para virar pela ponta dela)
     };
   }
 
@@ -65,6 +66,22 @@
     };
   }
 
+  /**
+   * Curva logo depois de uma carroça atravessada: a pedra nova sai pela PONTA
+   * da carroça (alinhada com o meio dela), nunca colada na lateral comprida.
+   */
+  function turnAtDouble(C, to, S, gap) {
+    const [tx, ty] = VEC[to];
+    const L = 2 * S;
+    const c = [C[0] + tx * (S + gap + L / 2), C[1] + ty * (S + gap + L / 2)];
+    const horiz = tx !== 0;
+    return {
+      r: rect(c[0], c[1], horiz ? L : S, horiz ? S : L),
+      end: [C[0] + tx * (S + gap + L), C[1] + ty * (S + gap + L)],
+      dir: to,
+    };
+  }
+
   /** Tenta posicionar tudo com pedras de lado curto S. Retorna null se não couber. */
   function layout(chain, originId, W, H, S) {
     if (!chain.length) return { S, tiles: [], ghosts: { left: null, right: null } };
@@ -78,29 +95,31 @@
 
     const or = o.dbl ? rect(0, 0, L, S) : rect(0, 0, S, L);
     if (!inside(or, W, H)) return null;
-    tiles.push({ id: o.id, ...or, first: o.l, second: o.r, vertical: !o.dbl });
+    tiles.push({ id: o.id, ...or, first: o.l, second: o.r, vertical: !o.dbl, dbl: !!o.dbl });
     placed.push(or);
     const half = o.dbl ? S / 2 : L / 2;
 
     function fits(r) { return inside(r, W, H) && !placed.some((p) => overlaps(p, r)); }
+
+    const curve = (P, dblC, from, to) => (dblC ? turnAtDouble(dblC, to, S, gap) : turn(P, from, to, S, gap));
 
     function next(arm, dbl) {
       const dir = arm.seq[arm.k];
       const s = straight(arm.P, dir, S, gap, dbl);
       // Só segue reto se depois ainda sobrar espaço para fazer a curva.
       const canTurnAfter = arm.k + 1 >= arm.seq.length
-        || inside(turn(s.end, dir, arm.seq[arm.k + 1], S, gap).r, W, H);
+        || inside(curve(s.end, s.dblC, dir, arm.seq[arm.k + 1]).r, W, H);
       if (fits(s.r) && canTurnAfter) return { ...s, k: arm.k };
       if (arm.k + 1 < arm.seq.length) {
-        const t = turn(arm.P, dir, arm.seq[arm.k + 1], S, gap);
-        if (fits(t.r)) return { ...t, k: arm.k + 1 };
+        const t = curve(arm.P, arm.dblC, dir, arm.seq[arm.k + 1]);
+        if (fits(t.r)) return { ...t, dblC: null, k: arm.k + 1 };
       }
       return null;
     }
 
     const arms = {
-      left: { P: [0, -half], seq: TURNS.up, k: 0 },
-      right: { P: [0, half], seq: TURNS.down, k: 0 },
+      left: { P: [0, -half], seq: TURNS.up, k: 0, dblC: o.dbl ? [0, 0] : null },
+      right: { P: [0, half], seq: TURNS.down, k: 0, dblC: o.dbl ? [0, 0] : null },
     };
     const order = {
       left: chain.slice(0, oi).reverse().map((c) => ({ c, inner: c.r, outer: c.l })),
@@ -119,10 +138,12 @@
           first: backwards ? outer : inner,
           second: backwards ? inner : outer,
           vertical: p.r.h > p.r.w,
+          dbl: !!p.dblC,
         });
         placed.push(p.r);
         arm.P = p.end;
         arm.k = p.k;
+        arm.dblC = p.dblC || null;
       }
     }
 

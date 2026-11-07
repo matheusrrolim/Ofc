@@ -145,3 +145,33 @@ test('dominó: metades encostadas têm o mesmo número', () => {
     assert.deepStrictEqual([t.first, t.second].sort(), [c.l, c.r].sort());
   }
 });
+
+test('dominó: depois de uma carroça atravessada a fila sai pela ponta dela', () => {
+  let checked = 0;
+  for (let g = 0; g < 200; g++) {
+    const m = Domino.startHand(Domino.newMatch(['a', 'b', 'c', 'd']));
+    while (!m.hand.over) {
+      const pi = m.hand.current;
+      const mv = Domino.botMove(m, pi);
+      if (mv) Domino.play(m, pi, mv.tile.id, mv.side); else Domino.pass(m, pi);
+    }
+    const h = m.hand;
+    const res = Layout.fit(h.chain, h.origin, 230, 470);
+    const byId = Object.fromEntries(res.tiles.map((t) => [t.id, t]));
+    const oi = h.chain.findIndex((c) => c.id === h.origin);
+    const arms = [h.chain.slice(0, oi + 1).reverse(), h.chain.slice(oi)];
+    for (const arm of arms) {
+      for (let i = 1; i < arm.length; i++) {
+        const a = byId[arm[i - 1].id];
+        const b = byId[arm[i].id];
+        if (!a.dbl) continue;
+        // A pedra seguinte fica alinhada com o meio da carroça (sai pela ponta).
+        const horizontal = b.w > b.h;
+        const off = horizontal ? Math.abs(b.cy - a.cy) : Math.abs(b.cx - a.cx);
+        if (!b.dbl) assert.ok(off < 1, `pedra ${b.id} colada na lateral da carroça ${a.id}`);
+        checked++;
+      }
+    }
+  }
+  assert.ok(checked > 50);
+});
