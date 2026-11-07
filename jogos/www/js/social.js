@@ -42,7 +42,8 @@
 
     // Posição do lugar relativa à camada (que fica dentro da moldura do app).
     function anchor(seat) {
-      const e = document.querySelector(SEAT_SEL[seat]);
+      const sel = seats === 2 ? { 0: '.me', 1: '.seat-top' }[seat] : SEAT_SEL[seat];
+      const e = document.querySelector(sel);
       if (!e) return null;
       const r = e.getBoundingClientRect();
       const o = (document.getElementById('phone') || document.body).getBoundingClientRect();

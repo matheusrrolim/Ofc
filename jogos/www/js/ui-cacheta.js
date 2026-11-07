@@ -14,6 +14,7 @@
       name: (s) => (m && m.players[s] ? m.players[s].name : ''),
       isBot: (s) => !!(m && m.players[s] && m.players[s].bot),
       partner: null,
+      seats: m.players.length,
       onSend: (t) => table.sendChat(t),
       onEmoji: (e) => table.sendEmoji(e),
     });
@@ -78,7 +79,7 @@
             social.chatButton(),
             el('div', { class: 'score' }, `Mão ${m.handNo} · Vitórias ${m.players[0].wins}`)),
           el('div', { class: 'table' },
-            seat(2, 'top'), seat(3, 'left'), seat(1, 'right'),
+            m.players.length === 2 ? seat(1, 'top') : [seat(2, 'top'), seat(3, 'left'), seat(1, 'right')],
             el('div', { class: 'table-center' },
               el('div', { class: 'piles' },
                 el('div', { class: 'pile' + (drawPhase ? ' active' : ''), onclick: () => humanDraw('stock') },

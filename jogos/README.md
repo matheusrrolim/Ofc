@@ -10,6 +10,16 @@ das salas de jogos online: um lobby com fichas e vários jogos dentro.
 | Tranca  | 🔜 Próximo                                     |
 | Truco, Buraco, Damas | 🔜 Planejados                    |
 
+## Modos de jogo
+
+- **Contra o computador:** 4 jogadores ou mano a mano, offline.
+- **Partida rápida:** o servidor junta pessoas aleatórias que escolheram o
+  mesmo jogo e modo. Mesa de 4 com 2+ pessoas esperando começa com bots depois
+  de 20 s; quem estiver sozinho pode tocar em "Começar agora com bots".
+- **Jogar com amigos:** cria uma mesa com código de 4 letras (4 ou mano a mano).
+- **Dominó mano a mano:** 7 pedras para cada, 14 no monte; sem pedra que
+  encaixe, compra do monte. Na primeira mão sai a maior carroça.
+
 ## Chat e emojis na mesa
 
 Toda mesa tem:

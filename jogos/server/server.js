@@ -2,8 +2,9 @@
  * Servidor do multiplayer da Mesa de Jogos.
  *
  * - Serve o app (pasta www/) por HTTP: no iPhone basta abrir o endereço no Safari.
- * - WebSocket em /ws: salas com código de 4 letras, até 4 pessoas por mesa.
- *   Lugares vazios viram bots. Quem cai da conexão volta para o mesmo lugar
+ * - WebSocket em /ws: salas com código de 4 letras, mesas de 4 ou mano a mano (2).
+ *   Lugares vazios viram bots.
+ * - Partida rápida: fila por jogo/tamanho que junta desconhecidos numa mesa. Quem cai da conexão volta para o mesmo lugar
  *   (enquanto isso, um bot joga por ele).
  * - As regras rodam aqui (mesmos arquivos do app), então ninguém trapaceia.
  *
@@ -21,6 +22,8 @@ const WWW = path.join(__dirname, '..', 'www');
 const BOT_NAMES = ['Carlos', 'Bia', 'Rosa', 'Zé', 'Lu'];
 const BOT_DELAY = Number(process.env.BOT_DELAY || 800);
 const EMPTY_ROOM_TTL = 10 * 60 * 1000;
+// Partida rápida de 4: se já tem 2+ pessoas esperando há esse tempo, completa com bots.
+const QUICK_FILL_MS = Number(process.env.QUICK_FILL_MS || 20000);
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 
 const MIME = {
@@ -44,6 +47,14 @@ function createServer() {
   const server = http.createServer(serveStatic);
   const wss = new WebSocketServer({ server, path: '/ws' });
   const rooms = new Map();
+  const queues = new Map(); // 'jogo:tamanho' -> [{ ws, name, since }]
+
+  function sizeFor(game, size) {
+    const g = Tables.games[game];
+    if (!g) return null;
+    const n = Number(size) || 4;
+    return g.sizes.includes(n) ? n : null;
+  }
 
   function newCode() {
     for (;;) {
@@ -62,6 +73,8 @@ function createServer() {
       room: {
         code: room.code,
         game: room.game,
+        size: room.seats.length,
+        quick: !!room.quick,
         started: !!room.state,
         you: seat,
         host: room.seats[seat] && room.seats[seat].token === room.hostToken,
@@ -87,6 +100,8 @@ function createServer() {
     if (cur == null) return;
     const s = room.seats[cur];
     if (s && s.human && s.ws) return;
+    // Ninguém conectado na mesa: os bots esperam alguém voltar.
+    if (!room.seats.some((x) => x && x.human && x.ws)) return;
     room.botTimer = setTimeout(() => {
       if (!rooms.has(room.code) || !room.state) return;
       if (g.current(room.state) !== cur) return;
@@ -94,6 +109,7 @@ function createServer() {
       broadcast(room);
       driveBots(room);
     }, BOT_DELAY);
+    room.botTimer.unref();
   }
 
   function startGame(room) {
@@ -104,6 +120,63 @@ function createServer() {
     broadcast(room);
     driveBots(room);
   }
+
+  function newRoom(game, size, people, quick) {
+    const r = { code: newCode(), game, seats: Array(size).fill(null), state: null, quick: !!quick };
+    people.forEach((p, i) => { r.seats[i] = { name: p.name, human: true, token: crypto.randomUUID(), ws: null }; });
+    r.hostToken = r.seats[0].token;
+    rooms.set(r.code, r);
+    return r;
+  }
+
+  /* ---------- partida rápida ---------- */
+  function queueStatus(key) {
+    const q = queues.get(key) || [];
+    const size = Number(key.split(':')[1]);
+    q.forEach((e) => send(e.ws, { t: 'queue', waiting: q.length, size }));
+  }
+
+  function unqueue(ws) {
+    const key = ws.queue;
+    if (!key) return;
+    ws.queue = null;
+    const q = queues.get(key);
+    if (!q) return;
+    const i = q.findIndex((e) => e.ws === ws);
+    if (i >= 0) q.splice(i, 1);
+    queueStatus(key);
+  }
+
+  function startQuick(game, size, group) {
+    const r = newRoom(game, size, group, true);
+    group.forEach((e, i) => {
+      e.ws.room = r.code;
+      r.seats[i].ws = e.ws;
+      send(e.ws, { t: 'joined', code: r.code, token: r.seats[i].token });
+    });
+    startGame(r);
+  }
+
+  function match(key) {
+    const q = queues.get(key);
+    if (!q) return;
+    const [game, sizeStr] = key.split(':');
+    const size = Number(sizeStr);
+    while (q.length >= size) {
+      const group = q.splice(0, size);
+      group.forEach((e) => { e.ws.queue = null; });
+      startQuick(game, size, group);
+    }
+    if (size > 2 && q.length >= 2 && Date.now() - q[0].since >= QUICK_FILL_MS) {
+      const group = q.splice(0, size);
+      group.forEach((e) => { e.ws.queue = null; });
+      startQuick(game, size, group);
+    }
+    queueStatus(key);
+  }
+
+  const matcher = setInterval(() => queues.forEach((q, key) => { if (q.length) match(key); }), 2000);
+  matcher.unref();
 
   function seatOf(room, ws) { return room.seats.findIndex((s) => s && s.ws === ws); }
 
@@ -148,14 +221,37 @@ function createServer() {
     const room = ws.room && rooms.get(ws.room);
     switch (msg.t) {
       case 'create': {
-        if (!Tables.games[msg.game]) return send(ws, { t: 'error', msg: 'Jogo desconhecido.' });
+        const size = sizeFor(msg.game, msg.size);
+        if (!size) return send(ws, { t: 'error', msg: 'Jogo desconhecido.' });
         if (room) leave(ws, true);
-        const r = { code: newCode(), game: msg.game, seats: [null, null, null, null], state: null };
-        const token = crypto.randomUUID();
-        r.hostToken = token;
-        r.seats[0] = { name, human: true, token, ws: null };
-        rooms.set(r.code, r);
+        unqueue(ws);
+        const r = newRoom(msg.game, size, [{ ws, name }]);
         return attach(ws, r, 0);
+      }
+      case 'quick': {
+        const size = sizeFor(msg.game, msg.size);
+        if (!size) return send(ws, { t: 'error', msg: 'Jogo desconhecido.' });
+        if (room) leave(ws, true);
+        unqueue(ws);
+        const key = `${msg.game}:${size}`;
+        if (!queues.has(key)) queues.set(key, []);
+        queues.get(key).push({ ws, name, since: Date.now() });
+        ws.queue = key;
+        return match(key);
+      }
+      case 'quickCancel':
+        return unqueue(ws);
+      case 'quickBots': {
+        // Cansou de esperar: começa agora com quem estiver na fila + bots.
+        const key = ws.queue;
+        const q = key && queues.get(key);
+        if (!q) return;
+        const [game, size] = key.split(':');
+        const group = q.splice(0, Number(size));
+        if (!group.some((e) => e.ws === ws)) { q.unshift(...group); return; }
+        group.forEach((e) => { e.ws.queue = null; });
+        startQuick(game, Number(size), group);
+        return queueStatus(key);
       }
       case 'join': {
         const r = rooms.get(String(msg.code || '').toUpperCase().trim());
@@ -226,7 +322,7 @@ function createServer() {
       try { msg = JSON.parse(data); } catch (e) { return; }
       try { handle(ws, msg); } catch (e) { console.error(e); send(ws, { t: 'error', msg: 'Erro no servidor.' }); }
     });
-    ws.on('close', () => leave(ws, false));
+    ws.on('close', () => { unqueue(ws); leave(ws, false); });
   });
 
   // Derruba conexões mortas (celular que perdeu sinal).
@@ -238,9 +334,17 @@ function createServer() {
     });
   }, 30000);
   beat.unref();
-  server.on('close', () => { clearInterval(beat); wss.clients.forEach((ws) => ws.terminate()); });
+  server.on('close', () => { clearInterval(beat); clearInterval(matcher); wss.clients.forEach((ws) => ws.terminate()); });
 
-  return { server, rooms };
+  /** Desliga tudo (usado nos testes): fecha as conexões e para os bots. */
+  function shutdown() {
+    rooms.forEach((r) => { clearTimeout(r.botTimer); clearTimeout(r.ttl); });
+    wss.clients.forEach((ws) => ws.terminate());
+    server.closeAllConnections();
+    server.close();
+  }
+
+  return { server, rooms, shutdown };
 }
 
 if (require.main === module) {

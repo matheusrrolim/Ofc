@@ -23,21 +23,25 @@
   const rot = (i, r, n) => (i == null ? i : (i - r + n) % n);
   const hidden = (n) => Array.from({ length: n }, () => ({}));
 
+  // sizes: quantos jogadores a mesa aceita (4 = normal, 2 = mano a mano).
   const games = {
     domino: {
-      seats: 4,
+      sizes: [4, 2],
       create(names) { const m = D.newMatch(names); D.startHand(m); return m; },
       current(m) { return m.hand.over ? null : m.hand.current; },
       handOver(m) { return m.hand.over; },
       act(m, seat, a) {
         if (a.type === 'play') return D.play(m, seat, a.id, a.side);
         if (a.type === 'pass') return D.pass(m, seat);
+        if (a.type === 'buy') return D.buy(m, seat);
         return false;
       },
       bot(m) {
         const pi = m.hand.current;
         const mv = D.botMove(m, pi);
-        return mv ? D.play(m, pi, mv.tile.id, mv.side) : D.pass(m, pi);
+        if (mv) return D.play(m, pi, mv.tile.id, mv.side);
+        if (D.canBuy(m, pi)) return D.buy(m, pi);
+        return D.pass(m, pi);
       },
       next(m) {
         if (!m.hand.over) return false;
@@ -49,8 +53,8 @@
         return true;
       },
       view(m, r) {
-        const n = 4;
-        const swap = r % 2 === 1; // as duplas trocam de lado quando você está num lugar ímpar
+        const n = m.players.length;
+        const swap = r % 2 === 1; // os times trocam de lado quando você está num lugar ímpar
         const team = (t) => (t == null ? t : swap ? 1 - t : t);
         const h = m.hand;
         const players = [];
@@ -72,6 +76,7 @@
           winnerTeam: team(m.winnerTeam),
           hand: {
             chain: h.chain, left: h.left, right: h.right, origin: h.origin, forced: h.forced, passes: h.passes,
+            boneyard: { length: h.boneyard.length },
             current: rot(h.current, r, n),
             lastMove: h.lastMove && { ...h.lastMove, pi: rot(h.lastMove.pi, r, n) },
             over: h.over,
@@ -82,7 +87,7 @@
     },
 
     cacheta: {
-      seats: 4,
+      sizes: [4, 2],
       create(names) { const m = C.newMatch(names); C.startHand(m); return m; },
       current(m) { return m.hand.over ? null : m.hand.current; },
       handOver(m) { return m.hand.over; },

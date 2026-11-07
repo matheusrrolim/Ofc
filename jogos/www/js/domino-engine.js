@@ -1,10 +1,13 @@
 /*
  * Dominó (regras brasileiras, 4 jogadores em duplas, sem compra).
  *
- * - 28 pedras, 7 para cada jogador. Duplas: 0 e 2 contra 1 e 3.
- * - Na primeira mão sai quem tem a carroça de sena (6-6), que é obrigatória.
- *   Nas seguintes, quem ganhou a mão anterior sai com qualquer pedra.
- * - Quem não tem pedra que encaixe, passa.
+ * - 28 pedras, 7 para cada jogador.
+ *   4 jogadores: duplas 0 e 2 contra 1 e 3, sem monte.
+ *   2 jogadores (mano a mano): sobram 14 pedras no monte; quem não tem pedra
+ *   que encaixe compra do monte até conseguir jogar (ou o monte acabar).
+ * - Na primeira mão sai quem tem a maior carroça (com 4 jogadores, sempre o 6-6),
+ *   que é obrigatória. Nas seguintes, quem ganhou a mão anterior sai com qualquer pedra.
+ * - Quem não tem pedra que encaixe (e não tem mais monte), passa.
  * - Batida (acabar as pedras):
  *     comum = 1 ponto, carroça = 2, lá e lô = 3, cruzada = 4.
  * - Jogo fechado (todos passam): a dupla com menos pontos na mão ganha 1 ponto.
@@ -56,19 +59,28 @@
   /** Distribui as pedras. `tiles` opcional (testes) define a ordem do baralho. */
   function startHand(m, tiles) {
     const set = tiles ? tiles.slice() : shuffle(fullSet());
+    const n = m.players.length;
     m.players.forEach((p, i) => { p.hand = set.slice(i * 7, i * 7 + 7); });
+    const boneyard = set.slice(n * 7);
     m.handNo++;
     let current;
     let forced = null;
     if (m.nextStarter == null) {
-      current = m.players.findIndex((p) => p.hand.some((t) => t.id === '6-6'));
-      forced = '6-6';
+      // Maior carroça que estiver na mão de alguém (sem carroças: a pedra mais pesada).
+      let best = null;
+      m.players.forEach((p, i) => p.hand.forEach((t) => {
+        const score = (isDouble(t) ? 100 : 0) + pips(t);
+        if (!best || score > best.score) best = { score, i, id: t.id };
+      }));
+      current = best.i;
+      forced = best.id;
     } else {
       current = m.nextStarter;
     }
     m.lastStarter = current;
     m.hand = {
       chain: [], left: null, right: null, origin: null,
+      boneyard,
       current, forced, passes: 0,
       lastMove: null, over: false, result: null,
     };
@@ -135,17 +147,31 @@
       }
       endHand(m, { type: 'batida', kind, pts, winner: pi, team: p.team });
     } else {
-      h.current = (pi + 1) % 4;
+      h.current = (pi + 1) % m.players.length;
     }
+    return true;
+  }
+
+  /** Mano a mano: sem pedra que encaixe, compra uma do monte. */
+  function canBuy(m, pi) {
+    const h = m.hand;
+    return !h.over && h.current === pi && h.boneyard.length > 0 && !movesFor(m, pi).length;
+  }
+
+  function buy(m, pi) {
+    if (!canBuy(m, pi)) return false;
+    const h = m.hand;
+    m.players[pi].hand.push(h.boneyard.pop());
+    h.lastMove = { pi, buy: true };
     return true;
   }
 
   function pass(m, pi) {
     const h = m.hand;
-    if (h.over || h.current !== pi || movesFor(m, pi).length) return false;
+    if (h.over || h.current !== pi || movesFor(m, pi).length || h.boneyard.length) return false;
     h.passes++;
     h.lastMove = { pi, pass: true };
-    if (h.passes >= 4) {
+    if (h.passes >= m.players.length) {
       const teamPips = [0, 0];
       m.players.forEach((p) => { teamPips[p.team] += handPips(p.hand); });
       if (teamPips[0] === teamPips[1]) {
@@ -159,7 +185,7 @@
         endHand(m, { type: 'fechado', kind: 'jogo fechado', pts: 1, team, winner, teamPips });
       }
     } else {
-      h.current = (pi + 1) % 4;
+      h.current = (pi + 1) % m.players.length;
     }
     return true;
   }
@@ -169,7 +195,7 @@
     h.over = true;
     h.result = res;
     if (res.pts && res.team != null) m.scores[res.team] += res.pts;
-    m.nextStarter = res.winner != null ? res.winner : (m.lastStarter + 1) % 4;
+    m.nextStarter = res.winner != null ? res.winner : (m.lastStarter + 1) % m.players.length;
     if (m.scores[0] >= m.target) m.winnerTeam = 0;
     else if (m.scores[1] >= m.target) m.winnerTeam = 1;
   }
@@ -195,5 +221,5 @@
     return best;
   }
 
-  return { TARGET, fullSet, newMatch, startHand, movesFor, play, pass, botMove, handPips, isDouble, pips };
+  return { TARGET, fullSet, newMatch, startHand, movesFor, play, pass, buy, canBuy, botMove, handPips, isDouble, pips };
 });

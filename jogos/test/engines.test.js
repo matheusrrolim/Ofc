@@ -175,3 +175,45 @@ test('dominó: depois de uma carroça atravessada a fila sai pela ponta dela', (
   }
   assert.ok(checked > 50);
 });
+
+test('dominó mano a mano: monte, compra e partidas inteiras', () => {
+  for (let g = 0; g < 300; g++) {
+    const m = Domino.newMatch(['a', 'b']);
+    let hands = 0;
+    while (m.winnerTeam == null) {
+      Domino.startHand(m);
+      hands++;
+      assert.ok(hands < 300);
+      if (hands === 1) {
+        // Começa com a maior carroça que estiver na mão de alguém.
+        const f = m.hand.forced;
+        assert.ok(m.players[m.hand.current].hand.some((t) => t.id === f));
+      }
+      let steps = 0;
+      while (!m.hand.over) {
+        const pi = m.hand.current;
+        const mv = Domino.botMove(m, pi);
+        if (mv) assert.ok(Domino.play(m, pi, mv.tile.id, mv.side));
+        else if (Domino.canBuy(m, pi)) {
+          assert.ok(!Domino.pass(m, pi), 'não pode passar com monte');
+          assert.ok(Domino.buy(m, pi));
+        } else assert.ok(Domino.pass(m, pi));
+        assert.ok(++steps < 400);
+        const total = m.players.reduce((s, p) => s + p.hand.length, 0) + m.hand.chain.length + m.hand.boneyard.length;
+        assert.strictEqual(total, 28);
+      }
+    }
+  }
+});
+
+test('mesas: visão mano a mano esconde a mão do rival e o monte', () => {
+  const Tables = require('../www/js/tables.js');
+  const g = Tables.games.domino;
+  const m = g.create(['a', 'b']);
+  const v = g.view(m, 1);
+  assert.strictEqual(v.players.length, 2);
+  assert.strictEqual(v.players[0].name, 'b');
+  assert.ok(v.players[1].hand.every((t) => t.a === undefined));
+  assert.strictEqual(v.hand.boneyard.length, 14);
+  assert.ok(!Array.isArray(v.hand.boneyard));
+});

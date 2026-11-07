@@ -15,10 +15,11 @@
   function serverUrl() {
     const saved = store.get('servidor', '');
     if (saved) return saved;
-    if (root.MESA_SERVER) return root.MESA_SERVER;
+    // No navegador, o próprio site é o servidor. O app instalado usa o config.js.
     const isApp = !!root.Capacitor || location.protocol === 'capacitor:' || location.protocol === 'file:';
-    if (!isApp && /^https?:$/.test(location.protocol)) return location.origin;
-    return '';
+    const isServerSite = /^https?:$/.test(location.protocol) && !/(^|\.)claude\.ai$|claudeusercontent/.test(location.hostname);
+    if (!isApp && isServerSite) return location.origin;
+    return root.MESA_SERVER || '';
   }
 
   function wsUrl(base) {
@@ -27,7 +28,7 @@
 
   function session(name) {
     const base = serverUrl();
-    const listeners = { room: [], state: [], chat: [], emoji: [], error: [], status: [] };
+    const listeners = { room: [], state: [], chat: [], emoji: [], error: [], status: [], queue: [] };
     const emit = (k, ...a) => listeners[k].forEach((f) => f(...a));
     let ws = null;
     let closed = false;
@@ -37,6 +38,7 @@
     let pending = null; // ação a enviar quando conectar (create/join)
     let saved = store.get('mesaOnline', null); // { code, token } para voltar à mesa
     let status = 'connecting';
+    let searching = null; // pedido de partida rápida em andamento
 
     function setStatus(s) { status = s; emit('status', s); }
 
@@ -54,11 +56,13 @@
         setStatus('online');
         if (pending) { send(pending); pending = null; }
         else if (saved) send({ t: 'join', code: saved.code, token: saved.token, name });
+        else if (searching && !room) send(searching); // caiu enquanto procurava: volta para a fila
       };
       ws.onmessage = (ev) => {
         let m;
         try { m = JSON.parse(ev.data); } catch (e) { return; }
         if (m.t === 'joined') {
+          searching = null;
           saved = { code: m.code, token: m.token };
           store.set('mesaOnline', saved);
         } else if (m.t === 'room') { room = m.room; emit('room', room); }
@@ -66,7 +70,8 @@
         else if (m.t === 'chat' || m.t === 'emoji') {
           const you = room ? room.you : 0;
           emit(m.t, (m.seat - you + 4) % 4, m.text);
-        } else if (m.t === 'error') emit('error', m.msg);
+        } else if (m.t === 'queue') emit('queue', m);
+        else if (m.t === 'error') emit('error', m.msg);
       };
       ws.onclose = () => { if (!closed) { setStatus('offline'); scheduleRetry(); } };
       ws.onerror = () => {};
@@ -105,7 +110,15 @@
       get status() { return status; },
       on(k, f) { listeners[k].push(f); },
       off(k, f) { listeners[k] = listeners[k].filter((x) => x !== f); },
-      create(game) { saved = null; request({ t: 'create', game }); },
+      create(game, size) { saved = null; request({ t: 'create', game, size }); },
+      quick(game, size) {
+        saved = null;
+        searching = { t: 'quick', game, size, name };
+        request({ t: 'quick', game, size });
+      },
+      quickBots() { send({ t: 'quickBots' }); },
+      get searching() { return !!searching && !room; },
+      get searchRequest() { return searching; },
       join(code, keepToken) {
         const token = keepToken && saved && saved.code === code ? saved.token : undefined;
         request({ t: 'join', code: code.toUpperCase().trim(), token });
@@ -114,6 +127,8 @@
       start() { send({ t: 'start' }); },
       controller,
       leave() {
+        if (searching) send({ t: 'quickCancel' });
+        searching = null;
         send({ t: 'leave' });
         store.set('mesaOnline', null);
         saved = null;
