@@ -40,6 +40,9 @@
     toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
   }
 
+  /* Camada dos sobrepostos (modais, chat, balões), dentro da moldura do app. */
+  function layer() { return document.getElementById('overlay') || document.body; }
+
   function modal(title, body, actions) {
     const back = el('div', { class: 'modal-back' });
     const close = () => back.remove();
@@ -52,7 +55,7 @@
           onclick: () => { if (a.onclick() !== false) close(); },
         }, a.label))));
     back.append(box);
-    document.body.append(back);
+    layer().append(back);
     return close;
   }
 
@@ -100,5 +103,5 @@
     },
   };
 
-  root.U = { el, store, toast, modal, tile, playingCard, cardBack, wallet };
+  root.U = { el, store, toast, modal, layer, tile, playingCard, cardBack, wallet };
 })(this);

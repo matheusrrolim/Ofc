@@ -10,6 +10,17 @@ das salas de jogos online: um lobby com fichas e vários jogos dentro.
 | Tranca  | 🔜 Próximo                                     |
 | Truco, Buraco, Damas | 🔜 Planejados                    |
 
+## Chat e emojis na mesa
+
+Toda mesa tem:
+- **💬 Chat da mesa** (no topo): mensagens livres e frases rápidas. As falas
+  também aparecem em balões em cima de quem falou.
+- **😀 Reações** (canto da mesa): emojis grandes que aparecem em cima do seu
+  lugar, sem abrir o chat.
+
+Por enquanto quem responde são os bots. No multiplayer online, o mesmo módulo
+(`social.js`) passa a enviar e receber pela rede.
+
 ## Como funciona
 
 O app é feito em HTML/CSS/JavaScript puro (sem etapa de build) e empacotado
@@ -26,6 +37,7 @@ jogos/
 │       ├── ui-domino.js       tela do dominó
 │       ├── ui-cacheta.js      tela da cacheta
 │       ├── util.js            componentes (pedra, carta, modal, fichas)
+│       ├── social.js          chat da mesa e reações com emoji
 │       └── app.js             lobby e lista de jogos
 ├── test/engines.test.js     testes das regras (centenas de partidas bot × bot)
 ├── capacitor.config.json

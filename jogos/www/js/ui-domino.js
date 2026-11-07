@@ -16,6 +16,7 @@
     let alive = true;
     let timer = null;
     let lastMsg = 'Quem tem a carroça de sena (6-6) começa.';
+    const social = root.Social.create({ names, partner: 2 });
 
     function describe(mv) {
       if (!mv) return '';
@@ -74,12 +75,14 @@
           el('header', { class: 'game-bar' },
             el('button', { class: 'icon-btn', onclick: leave, 'aria-label': 'Voltar' }, '←'),
             el('div', { class: 'game-title' }, 'Dominó'),
+            social.chatButton(),
             el('div', { class: 'score' },
               el('span', { class: 'us' }, `Nós ${m.scores[0]}`), ' × ',
               el('span', { class: 'them' }, `${m.scores[1]} Eles`))),
           el('div', { class: 'table' },
             seat(2, 'top'), seat(3, 'left'), seat(1, 'right'),
-            el('div', { class: 'table-center' }, board())),
+            el('div', { class: 'table-center' }, board()),
+            social.emojiButton()),
           el('div', { class: 'status' + (myTurn ? ' mine' : '') },
             myTurn ? (canPlay ? (selected ? 'Escolha a ponta onde jogar.' : 'Sua vez: toque numa pedra destacada.') : 'Você não tem pedra que encaixe.') : lastMsg),
           el('div', { class: 'me' + (myTurn ? ' turn' : '') },
@@ -102,6 +105,8 @@
       else D.pass(m, pi);
       lastMsg = describe(m.hand.lastMove);
       render();
+      if (!mv) social.event('pass', pi);
+      announce();
     }
 
     function onTile(id) {
@@ -118,6 +123,12 @@
       selected = null;
       if (D.play(m, 0, id, side)) lastMsg = describe(m.hand.lastMove);
       render();
+      announce();
+    }
+
+    function announce() {
+      const r = m.hand.over && m.hand.result;
+      if (r && r.winner != null && r.pts) social.event('win', r.winner);
     }
 
     function humanPass() {
@@ -150,7 +161,7 @@
           el('div', {}, body, el('p', {}, won ? `Você ganhou ${PRIZE} fichas.` : `Você perdeu ${LOSS} fichas.`)),
           [
             { label: 'Sair', onclick: () => ctx.exit() },
-            { label: 'Jogar de novo', primary: true, onclick: () => { alive = false; mount(container, ctx); } },
+            { label: 'Jogar de novo', primary: true, onclick: () => { alive = false; social.destroy(); mount(container, ctx); } },
           ]);
       } else {
         modal(title, body, [{
@@ -167,7 +178,7 @@
       ]);
     }
 
-    ctx.onExit(() => { alive = false; clearTimeout(timer); });
+    ctx.onExit(() => { alive = false; clearTimeout(timer); social.destroy(); });
     render();
   }
 

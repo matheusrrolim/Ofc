@@ -20,6 +20,7 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
 body {
   background: var(--bg);
@@ -30,7 +31,13 @@ body {
   -webkit-user-select: none;
 }
 button { font: inherit; color: inherit; cursor: pointer; }
-#app { min-height: 100%; max-width: 720px; margin: 0 auto; }
+/* O app tem sempre formato de celular. Em tela grande vira um "aparelho" centralizado. */
+#phone { position: relative; height: 100%; max-width: 440px; margin: 0 auto; overflow: hidden; transform: translateZ(0); background: var(--bg); }
+#app { height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+@media (min-width: 600px) and (min-height: 560px) {
+  body { display: grid; place-items: center; background: radial-gradient(circle at 50% 30%, #0d3b28, #031510 70%); }
+  #phone { width: 400px; height: min(860px, calc(100% - 32px)); border-radius: 36px; border: 10px solid #0b0f0d; box-shadow: 0 0 0 2px #2a332e, 0 30px 60px rgba(0, 0, 0, .6); }
+}
 
 /* ---------- botões ---------- */
 .btn { border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 700; }
@@ -68,7 +75,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lobby-foot { margin-top: 28px; text-align: center; color: var(--muted); font-size: 13px; }
 
 /* ---------- mesa ---------- */
-.game { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; padding-bottom: var(--safe-bottom); }
+.game { display: flex; flex-direction: column; min-height: 100%; padding-bottom: var(--safe-bottom); }
 .game-bar { display: flex; align-items: center; gap: 10px; padding: calc(8px + var(--safe-top)) 12px 8px; background: rgba(0, 0, 0, .3); }
 .game-title { font-weight: 800; flex: 1; }
 .score { font-size: 14px; font-weight: 700; background: rgba(0, 0, 0, .3); padding: 4px 10px; border-radius: 999px; }
@@ -167,3 +174,42 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #toast { position: fixed; left: 50%; bottom: calc(24px + var(--safe-bottom)); transform: translate(-50%, 40px); opacity: 0; background: #111; color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 14px; transition: .2s; pointer-events: none; z-index: 60; max-width: calc(100% - 32px); }
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
 @keyframes fade { from { opacity: 0; } }
+
+/* ---------- chat e emojis ---------- */
+.chat-btn { position: relative; }
+.badge-dot { position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--red); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+.emoji-fab { position: absolute; right: 10px; bottom: 10px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .35); font-size: 24px; box-shadow: var(--shadow); z-index: 3; }
+.emoji-fab:active { transform: scale(.92); }
+.emoji-bar {
+  position: fixed; left: 0; right: 0; margin: 0 auto; width: fit-content; bottom: calc(150px + var(--safe-bottom)); z-index: 40;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 8px; border-radius: 18px;
+  background: var(--panel); border: 1px solid rgba(255, 255, 255, .12); box-shadow: var(--shadow); animation: pop .15s;
+}
+.emoji-bar button { border: 0; background: transparent; font-size: 28px; width: 48px; height: 48px; border-radius: 12px; }
+.emoji-bar button:active { background: rgba(255, 255, 255, .1); }
+.bubble {
+  position: fixed; z-index: 45; max-width: 220px; padding: 8px 12px; border-radius: 16px; background: #fff; color: #1d1d1d;
+  font-size: 14px; font-weight: 600; box-shadow: var(--shadow); pointer-events: none; animation: pop .2s; transition: opacity .35s, transform .35s;
+}
+.bubble.mine { background: var(--gold); color: #2a1d00; }
+.bubble.emoji { background: transparent; box-shadow: none; font-size: 46px; padding: 0; animation: float 2s ease-out; }
+.bubble.out { opacity: 0; transform: translateY(-12px); }
+.chat-back { position: fixed; inset: 0; z-index: 48; background: rgba(0, 0, 0, .45); display: flex; align-items: flex-end; animation: fade .15s; }
+.chat-sheet {
+  width: 100%; height: 70%; display: flex; flex-direction: column; background: var(--panel);
+  border-radius: 20px 20px 0 0; border-top: 1px solid rgba(255, 255, 255, .12); padding-bottom: var(--safe-bottom); animation: up .2s;
+}
+.chat-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 6px 16px; }
+.chat-list { flex: 1; overflow-y: auto; padding: 6px 12px; display: flex; flex-direction: column; gap: 6px; }
+.msg { align-self: flex-start; max-width: 80%; background: rgba(255, 255, 255, .08); padding: 7px 11px; border-radius: 14px 14px 14px 4px; font-size: 14px; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+.msg b { font-size: 11px; color: var(--gold); }
+.msg.mine { align-self: flex-end; background: var(--gold); color: #2a1d00; border-radius: 14px 14px 4px 14px; }
+.msg-empty { margin: auto; color: var(--muted); font-size: 14px; text-align: center; }
+.chat-quick { display: flex; gap: 6px; overflow-x: auto; padding: 8px 12px; scrollbar-width: none; }
+.chat-quick .chip { white-space: nowrap; }
+.chat-form { display: flex; gap: 8px; padding: 6px 12px 12px; }
+.chat-form .input { flex: 1; min-width: 0; padding: 10px 12px; font-size: 16px; }
+@keyframes pop { from { transform: scale(.6); opacity: 0; } }
+@keyframes float { 0% { transform: scale(.4); } 25% { transform: scale(1.2); } 40% { transform: scale(1); } 100% { transform: translateY(-30px); } }
+@keyframes up { from { transform: translateY(40%); } }
+@media (prefers-reduced-motion: reduce) { .bubble, .emoji-bar, .chat-sheet, .side-btn, .pile.active .card { animation: none; } }

@@ -1,9 +1,9 @@
 /* Service worker: guarda os arquivos para o app abrir sem internet. */
-const CACHE = 'mesa-v1';
+const CACHE = 'mesa-v2';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png',
   'css/style.css',
-  'js/domino-engine.js', 'js/cacheta-engine.js', 'js/util.js',
+  'js/domino-engine.js', 'js/cacheta-engine.js', 'js/util.js', 'js/social.js',
   'js/ui-domino.js', 'js/ui-cacheta.js', 'js/app.js',
 ];
 

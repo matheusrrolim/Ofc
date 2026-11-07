@@ -9,7 +9,9 @@
   const BOT_DELAY = 700;
 
   function mount(container, ctx) {
-    const m = C.newMatch([ctx.name, 'Carlos', 'Bia', 'Rosa']);
+    const names = [ctx.name, 'Carlos', 'Bia', 'Rosa'];
+    const m = C.newMatch(names);
+    const social = root.Social.create({ names, partner: null });
     C.startHand(m);
     let selected = null;
     let sortMode = 'grupos';
@@ -64,6 +66,7 @@
           el('header', { class: 'game-bar' },
             el('button', { class: 'icon-btn', onclick: leave, 'aria-label': 'Voltar' }, '←'),
             el('div', { class: 'game-title' }, 'Cacheta'),
+            social.chatButton(),
             el('div', { class: 'score' }, `Mão ${m.handNo} · Vitórias ${m.players[0].wins}`)),
           el('div', { class: 'table' },
             seat(2, 'top'), seat(3, 'left'), seat(1, 'right'),
@@ -72,7 +75,8 @@
                 el('div', { class: 'pile' + (drawPhase ? ' active' : ''), onclick: () => humanDraw('stock') },
                   cardBack(), el('small', {}, `Monte (${h.stock.length})`)),
                 el('div', { class: 'pile' + (drawPhase && top ? ' active' : ''), onclick: () => humanDraw('discard') },
-                  top ? playingCard(top) : el('div', { class: 'card empty' }), el('small', {}, 'Lixo'))))),
+                  top ? playingCard(top) : el('div', { class: 'card empty' }), el('small', {}, 'Lixo')))),
+            social.emojiButton()),
           el('div', { class: 'status' + (myTurn ? ' mine' : '') }, status),
           el('div', { class: 'me' + (myTurn ? ' turn' : '') },
             el('div', { class: 'hand card-hand' },
@@ -110,6 +114,7 @@
       }
       lastMsg = describe(m.hand.lastMove);
       render();
+      if (m.hand.over && m.hand.winner != null) social.event('win', m.hand.winner);
     }
 
     function humanDraw(from) {
@@ -136,6 +141,7 @@
         lastMsg = describe(m.hand.lastMove);
       }
       render();
+      if (m.hand.over && m.hand.winner === 0) social.event('win', 0);
     }
 
     function showResult() {
@@ -165,7 +171,7 @@
       ]);
     }
 
-    ctx.onExit(() => { alive = false; clearTimeout(timer); });
+    ctx.onExit(() => { alive = false; clearTimeout(timer); social.destroy(); });
     render();
   }
 
