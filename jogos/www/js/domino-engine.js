@@ -68,7 +68,7 @@
     }
     m.lastStarter = current;
     m.hand = {
-      chain: [], left: null, right: null,
+      chain: [], left: null, right: null, origin: null,
       current, forced, passes: 0,
       lastMove: null, over: false, result: null,
     };
@@ -112,6 +112,7 @@
       h.left = t.a;
       h.right = t.b;
       h.forced = null;
+      h.origin = t.id;
     } else if (side === 'left') {
       const other = t.a === L ? t.b : t.a;
       h.chain.unshift({ l: other, r: L, id: t.id, dbl });

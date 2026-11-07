@@ -118,16 +118,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tile.v { flex-direction: column; }
 .tile.v .bar { width: auto; height: 1px; margin: 0 2px; align-self: stretch; }
 .board { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 100%; }
-.snake { display: inline-flex; flex-direction: column; gap: 2px; }
-.snake-row { display: flex; align-items: center; gap: 2px; }
-.snake-row.back { justify-content: flex-end; }
 .board .tile.end { box-shadow: 0 0 0 2px var(--gold), 0 0 10px rgba(245, 197, 66, .7); animation: pulse 1s infinite alternate; }
 .side-choice { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .board .tile { --s: 15px; }
 .board .tile.last { box-shadow: 0 0 0 2px var(--gold), 0 2px 3px rgba(0, 0, 0, .35); }
 .board-empty { color: rgba(255, 255, 255, .4); font-style: italic; }
 .side-btn { border: 0; background: var(--gold); color: #2a1d00; font-weight: 800; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
-.domino-hand .tile { --s: 26px; transition: transform .12s; }
+.domino-hand .tile { --s: 30px; transition: transform .12s; }
 .domino-hand .tile.dim { opacity: .55; }
 .domino-hand .tile.playable { box-shadow: 0 0 0 2px rgba(245, 197, 66, .7), 0 3px 4px rgba(0, 0, 0, .4); }
 .domino-hand .tile.selected { transform: translateY(-10px); box-shadow: 0 0 0 3px var(--gold); }
@@ -164,7 +161,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @media (max-width: 380px) {
   .card-hand .card { width: 44px; height: 64px; }
   .card-group .card + .card { margin-left: -22px; }
-  .domino-hand .tile { --s: 22px; }
+  .domino-hand .tile { --s: 25px; }
 }
 
 @keyframes pulse { to { filter: brightness(1.2); } }
@@ -218,3 +215,47 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes float { 0% { transform: scale(.4); } 25% { transform: scale(1.2); } 40% { transform: scale(1); } 100% { transform: translateY(-30px); } }
 @keyframes up { from { transform: translateY(40%); } }
 @media (prefers-reduced-motion: reduce) { .bubble, .emoji-bar, .chat-sheet, .side-btn, .pile.active .card { animation: none; } }
+
+/* ---------- mesa do dominó (posições calculadas em domino-layout.js) ---------- */
+.table-center { position: relative; align-self: stretch; justify-self: stretch; }
+.board-area { position: absolute; inset: 4px; }
+.board-area .board-empty { position: absolute; inset: 0; display: grid; place-items: center; }
+.board-area .tile { position: absolute; padding: 1px; align-items: stretch; border-radius: calc(var(--S, 20px) * .18); }
+.board-area .tile .half { width: auto; height: auto; flex: 1 1 0; min-width: 0; min-height: 0; padding: 10%; }
+.board-area .tile.last { box-shadow: 0 0 0 2px var(--gold), 0 2px 3px rgba(0, 0, 0, .35); }
+.ghost {
+  position: absolute; border: 2px dashed var(--gold); border-radius: 6px; background: rgba(245, 197, 66, .18);
+  color: var(--gold); font-weight: 800; font-size: 12px; padding: 0; animation: pulse 1s infinite alternate;
+}
+.board-area .side-choice { position: absolute; left: 0; right: 0; bottom: 0; }
+.online-tag { margin-left: 8px; font-size: 11px; font-weight: 700; background: #1f7a4d; color: #e9fff3; padding: 2px 7px; border-radius: 999px; vertical-align: middle; }
+.seat-name small { font-weight: 500; opacity: .8; }
+
+/* ---------- jogar com amigos ---------- */
+.online-box { margin-top: 18px; padding: 16px; border-radius: var(--radius); background: var(--panel); border: 1px solid rgba(245, 197, 66, .35); display: flex; flex-direction: column; gap: 10px; }
+.online-box h3 { margin: 0; font-size: 18px; }
+.online-box p { margin: 0; color: var(--muted); font-size: 14px; }
+.online-head { display: flex; align-items: center; justify-content: space-between; }
+.online-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.link-btn { background: none; border: 0; color: var(--muted); font-size: 13px; padding: 4px; }
+.btn.wide { width: 100%; }
+.choose-game { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.game-card.small { padding: 12px 8px; }
+.game-card.small .game-icon { height: 64px; }
+.code-input { text-transform: uppercase; letter-spacing: 8px; text-align: center; font-size: 26px; font-weight: 800; }
+.room { display: flex; flex-direction: column; min-height: 100%; }
+.room-body { flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 18px 16px calc(24px + var(--safe-bottom)); }
+.room-body.center { align-items: center; justify-content: center; text-align: center; }
+.code-box { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px; border-radius: var(--radius); background: radial-gradient(circle at 50% 20%, var(--felt-light), var(--felt-dark)); box-shadow: var(--shadow); }
+.code-box small { color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.code { font-size: 46px; font-weight: 900; letter-spacing: 10px; color: var(--gold); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); font-size: 14px; margin: 0; }
+.center { text-align: center; }
+.seats-list { display: flex; flex-direction: column; gap: 8px; }
+.seat-row { display: grid; grid-template-columns: 74px 1fr auto; align-items: center; gap: 8px; padding: 12px; border-radius: 12px; background: rgba(0, 0, 0, .25); }
+.seat-row.me { outline: 2px solid var(--gold); }
+.seat-num { font-size: 12px; color: var(--muted); }
+.seat-who { font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spinner { width: 42px; height: 42px; border-radius: 50%; border: 4px solid rgba(255, 255, 255, .15); border-top-color: var(--gold); animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.board-area .tile .pip { margin: 6%; }

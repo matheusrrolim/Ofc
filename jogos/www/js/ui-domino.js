@@ -1,88 +1,102 @@
-/* Tela do Dominó: você (embaixo) + parceiro (em cima) contra dois bots. */
+/*
+ * Tela do Dominó. Você fica embaixo, o parceiro em cima, os adversários dos lados.
+ * Funciona offline (contra bots) e online: só depende do "controle" recebido
+ * em ctx.table (Tables.local ou Net.session().controller).
+ */
 (function (root) {
   'use strict';
   const { el, tile, modal, toast, wallet } = root.U;
   const D = root.Domino;
+  const Layout = root.DominoLayout;
 
   const PRIZE = 100;
   const LOSS = 30;
-  const BOT_DELAY = 750;
 
   function mount(container, ctx) {
-    const names = [ctx.name, 'Carlos', 'Bia (parceira)', 'Rosa'];
-    const m = D.newMatch(names);
-    D.startHand(m);
+    const table = ctx.table;
+    let m = table.state();
     let selected = null;
     let alive = true;
-    let timer = null;
+    let closeModal = null;
+    let resultShownFor = null;
     let lastMsg = 'Quem tem a carroça de sena (6-6) começa.';
-    const social = root.Social.create({ names, partner: 2 });
+    const social = root.Social.create({
+      name: (s) => (m && m.players[s] ? m.players[s].name : ''),
+      isBot: (s) => !!(m && m.players[s] && m.players[s].bot),
+      partner: 2,
+      onSend: (t) => table.sendChat(t),
+      onEmoji: (e) => table.sendEmoji(e),
+    });
+    if (table.onChat) table.onChat((s, t) => social.receive(s, t));
+    if (table.onEmoji) table.onEmoji((s, e) => social.react(s, e));
+
+    const who = (pi) => (pi === 0 ? 'Você' : m.players[pi].name);
 
     function describe(mv) {
       if (!mv) return '';
-      const who = mv.pi === 0 ? 'Você' : m.players[mv.pi].name;
-      return mv.pass ? `${who} passou.` : `${who} jogou ${mv.id.replace('-', '|')}.`;
+      return mv.pass ? `${who(mv.pi)} passou.` : `${who(mv.pi)} jogou ${mv.id.replace('-', '|')}.`;
     }
 
     function seat(i, pos) {
       const p = m.players[i];
       const turn = !m.hand.over && m.hand.current === i;
+      const n = p.hand.length;
       return el('div', { class: `seat seat-${pos}` + (turn ? ' turn' : '') },
-        el('div', { class: 'seat-name' }, p.name),
+        el('div', { class: 'seat-name' }, p.name, i === 2 ? el('small', {}, ' · parceiro') : null),
         el('div', { class: 'seat-backs' }, p.hand.map(() => el('span', { class: 'mini-back' }))),
-        el('div', { class: 'seat-count' }, `${p.hand.length} ${p.hand.length === 1 ? 'pedra' : 'pedras'}`));
+        el('div', { class: 'seat-count' }, `${n} ${n === 1 ? 'pedra' : 'pedras'}`));
     }
 
-    function board() {
+    /* ---------- mesa: fila que sobe e desce e vira nas pontas ---------- */
+    function drawBoard() {
+      const area = container.querySelector('.board-area');
+      if (!area) return;
       const h = m.hand;
-      const chooseSide = selected && h.current === 0;
-      const sideBtn = (side, label) => el('button', {
-        class: 'side-btn',
-        onclick: () => humanPlay(selected, side),
-      }, label);
-      if (!h.chain.length) return el('div', { class: 'board' }, el('div', { class: 'board-empty' }, 'Mesa vazia'));
-
-      // Fila em "cobra": vai para a direita, vira na borda e volta pela linha
-      // de baixo, sempre ponta com ponta.
-      const avail = boardWidth();
-      const rows = [[]];
-      let w = 0;
-      for (const c of h.chain) {
-        const tw = (c.dbl ? TILE_SHORT : TILE_LONG) + TILE_GAP;
-        if (w + tw > avail && rows[rows.length - 1].length) { rows.push([]); w = 0; }
-        rows[rows.length - 1].push(c);
-        w += tw;
+      const W = area.clientWidth;
+      const H = area.clientHeight;
+      area.replaceChildren();
+      if (!h.chain.length) {
+        area.append(el('div', { class: 'board-empty' }, 'Mesa vazia'));
+        return;
       }
-      const first = h.chain[0].id;
-      const last = h.chain[h.chain.length - 1].id;
-      const snake = el('div', { class: 'snake' },
-        rows.map((row, ri) => {
-          const back = ri % 2 === 1; // linhas ímpares andam da direita para a esquerda
-          const cells = (back ? row.slice().reverse() : row).map((c) => tile(back ? c.r : c.l, back ? c.l : c.r, {
-            vertical: c.dbl,
-            cls: [
-              h.lastMove && h.lastMove.id === c.id ? 'last' : '',
-              chooseSide && (c.id === first || c.id === last) ? 'end' : '',
-            ].join(' '),
-          }));
-          return el('div', { class: 'snake-row' + (back ? ' back' : '') }, cells);
-        }));
-      return el('div', { class: 'board' },
-        snake,
-        chooseSide ? el('div', { class: 'side-choice' },
-          sideBtn('left', `Jogar na ponta ${h.left}`),
-          sideBtn('right', `Jogar na ponta ${h.right}`)) : null);
-    }
-
-    // Medidas das pedras da mesa (iguais ao CSS de .board .tile).
-    const TILE_LONG = 35;
-    const TILE_SHORT = 19;
-    const TILE_GAP = 2;
-    function boardWidth() {
-      const center = container.querySelector('.table-center');
-      if (center && center.clientWidth) return center.clientWidth - 16;
-      const phone = document.getElementById('phone');
-      return Math.max(160, (phone ? phone.clientWidth : window.innerWidth) - 2 * 64 - 40);
+      const res = Layout.fit(h.chain, h.origin, W, H);
+      const S = res.S;
+      area.style.setProperty('--S', S + 'px');
+      const place = (node, r) => {
+        node.style.left = (W / 2 + r.cx - r.w / 2) + 'px';
+        node.style.top = (H / 2 + r.cy - r.h / 2) + 'px';
+        node.style.width = r.w + 'px';
+        node.style.height = r.h + 'px';
+        return node;
+      };
+      const ends = new Set([h.chain[0].id, h.chain[h.chain.length - 1].id]);
+      const choosing = selected && h.current === 0;
+      for (const t of res.tiles) {
+        area.append(place(tile(t.first, t.second, {
+          vertical: t.vertical,
+          cls: [
+            h.lastMove && h.lastMove.id === t.id ? 'last' : '',
+            choosing && ends.has(t.id) ? 'end' : '',
+          ].join(' '),
+        }), t));
+      }
+      if (choosing) {
+        let missing = false;
+        for (const side of ['left', 'right']) {
+          const g = res.ghosts[side];
+          if (!g) { missing = true; continue; }
+          area.append(place(el('button', {
+            class: 'ghost',
+            'aria-label': `Jogar na ponta ${side === 'left' ? h.left : h.right}`,
+            onclick: () => humanPlay(selected, side),
+          }, 'aqui'), g));
+        }
+        if (missing) {
+          area.append(el('div', { class: 'side-choice' },
+            ['left', 'right'].map((side) => el('button', { class: 'side-btn', onclick: () => humanPlay(selected, side) },
+              `Ponta ${side === 'left' ? h.left : h.right}`))));
+        }
+      }
     }
 
     function handView() {
@@ -98,47 +112,33 @@
     }
 
     function render() {
-      if (!alive) return;
+      if (!alive || !m) return;
       const h = m.hand;
       const myTurn = !h.over && h.current === 0;
       const canPlay = myTurn && D.movesFor(m, 0).length > 0;
+      let status = lastMsg;
+      if (myTurn) status = canPlay ? (selected ? 'Toque em "aqui" na ponta onde quer jogar.' : 'Sua vez: toque numa pedra destacada.') : 'Você não tem pedra que encaixe.';
+      else if (!h.over && !lastMsg) status = `Vez de ${m.players[h.current].name}…`;
       container.replaceChildren(
         el('div', { class: 'game domino' },
           el('header', { class: 'game-bar' },
             el('button', { class: 'icon-btn', onclick: leave, 'aria-label': 'Voltar' }, '←'),
-            el('div', { class: 'game-title' }, 'Dominó'),
+            el('div', { class: 'game-title' }, 'Dominó', table.online ? el('span', { class: 'online-tag' }, 'online') : null),
             social.chatButton(),
             el('div', { class: 'score' },
               el('span', { class: 'us' }, `Nós ${m.scores[0]}`), ' × ',
               el('span', { class: 'them' }, `${m.scores[1]} Eles`))),
           el('div', { class: 'table' },
             seat(2, 'top'), seat(3, 'left'), seat(1, 'right'),
-            el('div', { class: 'table-center' }, board()),
+            el('div', { class: 'table-center' }, el('div', { class: 'board-area' })),
             social.emojiButton()),
-          el('div', { class: 'status' + (myTurn ? ' mine' : '') },
-            myTurn ? (canPlay ? (selected ? 'Escolha a ponta onde jogar.' : 'Sua vez: toque numa pedra destacada.') : 'Você não tem pedra que encaixe.') : lastMsg),
+          el('div', { class: 'status' + (myTurn ? ' mine' : '') }, status),
           el('div', { class: 'me' + (myTurn ? ' turn' : '') },
             handView(),
             myTurn && !canPlay ? el('button', { class: 'btn btn-primary', onclick: humanPass }, 'Passar a vez') : null)));
+      drawBoard();
       if (h.over) setTimeout(showResult, 500);
-      else if (h.current !== 0) schedule();
-    }
-
-    function schedule() {
-      clearTimeout(timer);
-      timer = setTimeout(botStep, BOT_DELAY);
-    }
-
-    function botStep() {
-      if (!alive || m.hand.over || m.hand.current === 0) return;
-      const pi = m.hand.current;
-      const mv = D.botMove(m, pi);
-      if (mv) D.play(m, pi, mv.tile.id, mv.side);
-      else D.pass(m, pi);
-      lastMsg = describe(m.hand.lastMove);
-      render();
-      if (!mv) social.event('pass', pi);
-      announce();
+      else if (closeModal) { closeModal(); closeModal = null; }
     }
 
     function onTile(id) {
@@ -153,31 +153,46 @@
 
     function humanPlay(id, side) {
       selected = null;
-      if (D.play(m, 0, id, side)) lastMsg = describe(m.hand.lastMove);
-      render();
-      announce();
+      table.act({ type: 'play', id, side });
     }
 
-    function announce() {
-      const r = m.hand.over && m.hand.result;
-      if (r && r.winner != null && r.pts) social.event('win', r.winner);
-    }
+    function humanPass() { table.act({ type: 'pass' }); }
 
-    function humanPass() {
-      if (D.pass(m, 0)) lastMsg = 'Você passou.';
+    // Toda mudança na mesa (sua jogada, bot, ou outra pessoa online).
+    let prevMove = '';
+    let winAnnounced = '';
+    table.onChange(() => {
+      if (!alive) return;
+      m = table.state();
+      const h = m.hand;
+      // A mesma jogada pode chegar mais de uma vez (online); compara pelo conteúdo.
+      const moveKey = `${m.handNo}|${h.chain.length}|${h.passes}|${JSON.stringify(h.lastMove)}`;
+      if (h.lastMove && moveKey !== prevMove) {
+        lastMsg = describe(h.lastMove);
+        if (h.lastMove.pass) social.event('pass', h.lastMove.pi);
+      }
+      prevMove = moveKey;
+      if (h.current !== 0) selected = null;
       render();
-    }
+      const r = h.over && h.result;
+      const key = m.handNo + ':' + m.scores.join();
+      if (r && r.winner != null && r.pts && winAnnounced !== key) {
+        winAnnounced = key;
+        social.event('win', r.winner);
+      }
+    });
 
     function showResult() {
-      if (!alive || document.querySelector('.modal-back')) return;
+      const key = m.handNo + ':' + m.scores.join();
+      if (!alive || !m.hand.over || resultShownFor === key || document.querySelector('.modal-back')) return;
+      resultShownFor = key;
       const r = m.hand.result;
       const ours = r.team === 0;
       let title;
       let text;
       if (r.type === 'batida') {
-        const who = r.winner === 0 ? 'Você' : m.players[r.winner].name;
         title = ours ? 'Ganhamos a mão!' : 'Eles ganharam a mão';
-        text = `${who} bateu (${r.kind}): +${r.pts} ${r.pts > 1 ? 'pontos' : 'ponto'}.`;
+        text = `${who(r.winner)} bateu (${r.kind}): +${r.pts} ${r.pts > 1 ? 'pontos' : 'ponto'}.`;
       } else if (r.team == null) {
         title = 'Jogo fechado: empate';
         text = `Pontos na mão: nós ${r.teamPips[0]}, eles ${r.teamPips[1]}. Ninguém pontua.`;
@@ -189,29 +204,39 @@
       if (m.winnerTeam != null) {
         const won = m.winnerTeam === 0;
         wallet.add(won ? PRIZE : -LOSS);
-        modal(won ? '🏆 Vitória!' : 'Derrota',
+        closeModal = modal(won ? '🏆 Vitória!' : 'Derrota',
           el('div', {}, body, el('p', {}, won ? `Você ganhou ${PRIZE} fichas.` : `Você perdeu ${LOSS} fichas.`)),
           [
             { label: 'Sair', onclick: () => ctx.exit() },
-            { label: 'Jogar de novo', primary: true, onclick: () => { alive = false; social.destroy(); mount(container, ctx); } },
+            { label: 'Jogar de novo', primary: true, onclick: () => { closeModal = null; table.next(); } },
           ]);
       } else {
-        modal(title, body, [{
+        closeModal = modal(title, body, [{
           label: 'Próxima mão', primary: true,
-          onclick: () => { D.startHand(m); lastMsg = `${m.hand.current === 0 ? 'Você começa' : m.players[m.hand.current].name + ' começa'}.`; render(); },
+          onclick: () => { closeModal = null; lastMsg = ''; table.next(); },
         }]);
       }
     }
 
     function leave() {
-      modal('Sair da partida?', el('p', {}, 'A partida em andamento será perdida.'), [
+      modal('Sair da partida?', el('p', {}, table.online
+        ? 'Você sai da mesa e um bot assume o seu lugar.'
+        : 'A partida em andamento será perdida.'), [
         { label: 'Continuar', onclick: () => {} },
-        { label: 'Sair', primary: true, onclick: () => ctx.exit() },
+        { label: 'Sair', primary: true, onclick: () => { table.leave(); ctx.exit(); } },
       ]);
     }
 
-    ctx.onExit(() => { alive = false; clearTimeout(timer); social.destroy(); });
+    const onResize = () => { if (alive && m) drawBoard(); };
+    window.addEventListener('resize', onResize);
+    ctx.onExit(() => {
+      alive = false;
+      window.removeEventListener('resize', onResize);
+      table.destroy();
+      social.destroy();
+    });
     render();
+    table.start();
   }
 
   root.DominoUI = { mount };

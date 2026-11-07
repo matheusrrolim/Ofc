@@ -1,0 +1,13 @@
+# Servidor do multiplayer da Mesa de Jogos (plano grátis do Render).
+# Também serve o app: abrir o endereço no navegador do celular já funciona.
+services:
+  - type: web
+    name: mesa-de-jogos
+    runtime: node
+    plan: free
+    branch: ccr-feae2fa3-2llp75
+    rootDir: jogos
+    buildCommand: npm ci --omit=dev
+    startCommand: node server/server.js
+    healthCheckPath: /health
+    autoDeploy: true

@@ -27,7 +27,9 @@
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
   function create(opts) {
-    const names = opts.names; // nome de cada lugar
+    const nameOf = (seat) => (opts.name ? opts.name(seat) : opts.names[seat]);
+    const isBot = opts.isBot || ((seat) => seat !== 0);
+    const seats = opts.seats || 4;
     const partner = opts.partner; // índice do parceiro (ou null)
     const messages = [];
     let unread = 0;
@@ -76,34 +78,42 @@
       text = text.trim().slice(0, 140);
       if (!text) return;
       receive(0, text);
+      if (opts.onSend) opts.onSend(text);
       botReplyTo(text);
     }
 
     function sendEmoji(emoji) {
       react(0, emoji);
-      if (Math.random() < 0.5) later(900 + Math.random() * 900, () => react(randomBot(), pick(EMOJIS)));
+      if (opts.onEmoji) opts.onEmoji(emoji);
+      const bot = randomBot();
+      if (bot != null && Math.random() < 0.5) later(900 + Math.random() * 900, () => react(bot, pick(EMOJIS)));
     }
 
     // --------- bots ---------
-    function randomBot() { return 1 + Math.floor(Math.random() * 3); }
+    function randomBot() {
+      const bots = [];
+      for (let i = 1; i < seats; i++) if (isBot(i)) bots.push(i);
+      return bots.length ? pick(bots) : null;
+    }
 
     function botReplyTo(text) {
-      const toPartner = partner != null && /parceir|bia|junto|confia/i.test(text);
+      const toPartner = partner != null && isBot(partner) && /parceir|bia|junto|confia/i.test(text);
       if (!toPartner && Math.random() > 0.6) return;
       const seat = toPartner ? partner : randomBot();
+      if (seat == null) return;
       later(1200 + Math.random() * 1500, () => receive(seat, pick(toPartner ? BOT_LINES.partner : BOT_LINES.reply)));
     }
 
     /** Eventos do jogo: 'win' (seat ganhou), 'pass' (seat passou). */
     function event(kind, seat) {
-      if (kind === 'pass' && seat !== 0 && Math.random() < 0.3) {
+      if (kind === 'pass' && isBot(seat) && Math.random() < 0.3) {
         if (Math.random() < 0.5) react(seat, pick(BOT_EMOJI.pass));
         else receive(seat, pick(BOT_LINES.pass));
       }
       if (kind === 'win') {
-        if (seat !== 0) later(300, () => (Math.random() < 0.5 ? receive(seat, pick(BOT_LINES.win)) : react(seat, pick(BOT_EMOJI.win))));
-        for (let s = 1; s < names.length; s++) {
-          if (s === seat || Math.random() > 0.45) continue;
+        if (isBot(seat)) later(300, () => (Math.random() < 0.5 ? receive(seat, pick(BOT_LINES.win)) : react(seat, pick(BOT_EMOJI.win))));
+        for (let s = 1; s < seats; s++) {
+          if (s === seat || !isBot(s) || Math.random() > 0.45) continue;
           const sameTeam = partner != null && (s % 2) === (seat % 2);
           later(700 + Math.random() * 1200, () => {
             if (sameTeam) react(s, pick(BOT_EMOJI.win));
@@ -142,7 +152,7 @@
     function renderList() {
       if (!listEl) return;
       listEl.replaceChildren(...(messages.length ? messages.map((m) => el('div', { class: 'msg' + (m.seat === 0 ? ' mine' : '') },
-        m.seat === 0 ? null : el('b', {}, names[m.seat]),
+        m.seat === 0 ? null : el('b', {}, nameOf(m.seat)),
         el('span', {}, m.text))) : [el('div', { class: 'msg-empty' }, 'Ninguém falou nada ainda. Diga oi para a mesa!')]));
       listEl.scrollTop = listEl.scrollHeight;
     }

@@ -3,6 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const Domino = require('../www/js/domino-engine.js');
 const Cacheta = require('../www/js/cacheta-engine.js');
+const Layout = require('../www/js/domino-layout.js');
 
 const T = (a, b) => ({ a, b, id: a + '-' + b });
 
@@ -104,4 +105,43 @@ test('cacheta: mãos inteiras entre bots terminam', () => {
     }
   }
   assert.ok(decided > 180, `poucas mãos decididas: ${decided}`);
+});
+
+test('dominó: mesa em L cabe no celular, sem pedras sobrepostas', () => {
+  // Área do centro da mesa num celular comum (~390px de largura).
+  const W = 230;
+  const H = 470;
+  let minS = Infinity;
+  for (let g = 0; g < 150; g++) {
+    const m = Domino.startHand(Domino.newMatch(['a', 'b', 'c', 'd']));
+    while (!m.hand.over) {
+      const pi = m.hand.current;
+      const mv = Domino.botMove(m, pi);
+      if (mv) Domino.play(m, pi, mv.tile.id, mv.side); else Domino.pass(m, pi);
+      const res = Layout.fit(m.hand.chain, m.hand.origin, W, H);
+      assert.strictEqual(res.tiles.length, m.hand.chain.length);
+      for (const t of res.tiles) assert.ok(Layout.inside(t, W, H), 'pedra fora da mesa');
+      for (let i = 0; i < res.tiles.length; i++) for (let j = i + 1; j < res.tiles.length; j++) {
+        assert.ok(!Layout.overlaps(res.tiles[i], res.tiles[j]), 'pedras sobrepostas');
+      }
+      minS = Math.min(minS, res.S);
+    }
+  }
+  assert.ok(minS >= 14, `pedras ficaram pequenas demais: ${minS}`);
+});
+
+test('dominó: metades encostadas têm o mesmo número', () => {
+  const m = Domino.startHand(Domino.newMatch(['a', 'b', 'c', 'd']));
+  while (!m.hand.over) {
+    const pi = m.hand.current;
+    const mv = Domino.botMove(m, pi);
+    if (mv) Domino.play(m, pi, mv.tile.id, mv.side); else Domino.pass(m, pi);
+  }
+  const res = Layout.fit(m.hand.chain, m.hand.origin, 230, 470);
+  const byId = Object.fromEntries(res.tiles.map((t) => [t.id, t]));
+  // Cada pedra mostra os dois números que ela tem.
+  for (const c of m.hand.chain) {
+    const t = byId[c.id];
+    assert.deepStrictEqual([t.first, t.second].sort(), [c.l, c.r].sort());
+  }
 });

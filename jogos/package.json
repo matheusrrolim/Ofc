@@ -4,12 +4,16 @@
   "private": true,
   "description": "Plataforma de jogos de mesa brasileiros (Dominó, Cacheta, ...) para Android e iPhone.",
   "scripts": {
-    "test": "node --test test/engines.test.js",
-    "serve": "npx --yes http-server www -p 8080 -c-1",
+    "test": "node --test test/engines.test.js test/server.test.js",
+    "serve": "node server/server.js",
     "android": "npx cap add android; npx cap sync android",
-    "ios": "npx cap add ios; npx cap sync ios"
+    "ios": "npx cap add ios; npx cap sync ios",
+    "start": "node server/server.js"
   },
   "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
     "@capacitor/android": "^7.0.0",
     "@capacitor/cli": "^7.0.0",
     "@capacitor/core": "^7.0.0",

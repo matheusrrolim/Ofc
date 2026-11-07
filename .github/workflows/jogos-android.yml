@@ -34,6 +34,11 @@ jobs:
       - name: Testes das regras
         run: npm test
 
+      # Endereço do servidor online dentro do APK (variável MESA_SERVER_URL do repositório).
+      - name: Configurar servidor online
+        if: ${{ vars.MESA_SERVER_URL != '' }}
+        run: echo "window.MESA_SERVER = '${{ vars.MESA_SERVER_URL }}';" > www/js/config.js
+
       - name: Gerar projeto Android
         run: |
           npx cap add android

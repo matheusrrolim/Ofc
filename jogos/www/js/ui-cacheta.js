@@ -1,4 +1,4 @@
-/* Tela da Cacheta: você contra três bots. */
+/* Tela da Cacheta. Funciona offline (bots) e online, pelo controle em ctx.table. */
 (function (root) {
   'use strict';
   const { el, playingCard, cardBack, modal, toast, wallet } = root.U;
@@ -6,17 +6,26 @@
 
   const PRIZE = 60;
   const LOSS = 15;
-  const BOT_DELAY = 700;
 
   function mount(container, ctx) {
-    const names = [ctx.name, 'Carlos', 'Bia', 'Rosa'];
-    const m = C.newMatch(names);
-    const social = root.Social.create({ names, partner: null });
-    C.startHand(m);
+    const table = ctx.table;
+    let m = table.state();
+    const social = root.Social.create({
+      name: (s) => (m && m.players[s] ? m.players[s].name : ''),
+      isBot: (s) => !!(m && m.players[s] && m.players[s].bot),
+      partner: null,
+      onSend: (t) => table.sendChat(t),
+      onEmoji: (e) => table.sendEmoji(e),
+    });
+    if (table.onChat) table.onChat((s, t) => social.receive(s, t));
+    if (table.onEmoji) table.onEmoji((s, e) => social.react(s, e));
     let selected = null;
+    let closeModal = null;
+    let resultShownFor = null;
+    let winAnnounced = null;
+    let prevMove = '';
     let sortMode = 'grupos';
     let alive = true;
-    let timer = null;
     let lastMsg = '';
 
     const label = (c) => C.rankLabel(c.r) + C.SUITS[c.s];
@@ -46,7 +55,7 @@
     }
 
     function render() {
-      if (!alive) return;
+      if (!alive || !m) return;
       const h = m.hand;
       const myTurn = !h.over && h.current === 0;
       const drawPhase = myTurn && h.phase === 'draw';
@@ -65,7 +74,7 @@
         el('div', { class: 'game cacheta' },
           el('header', { class: 'game-bar' },
             el('button', { class: 'icon-btn', onclick: leave, 'aria-label': 'Voltar' }, '←'),
-            el('div', { class: 'game-title' }, 'Cacheta'),
+            el('div', { class: 'game-title' }, 'Cacheta', table.online ? el('span', { class: 'online-tag' }, 'online') : null),
             social.chatButton(),
             el('div', { class: 'score' }, `Mão ${m.handNo} · Vitórias ${m.players[0].wins}`)),
           el('div', { class: 'table' },
@@ -96,34 +105,31 @@
               }, mode === 'grupos' ? 'Jogos' : mode === 'naipe' ? 'Naipe' : 'Valor')),
               discPhase && selected ? el('button', { class: 'btn btn-primary', onclick: () => humanDiscard(selected) }, winners.has(selected) ? 'Bater!' : 'Descartar') : null))));
       if (h.over) setTimeout(showResult, 600);
-      else if (h.current !== 0) schedule();
+      else if (closeModal) { closeModal(); closeModal = null; }
     }
 
-    function schedule() {
-      clearTimeout(timer);
-      timer = setTimeout(botStep, BOT_DELAY);
-    }
-
-    function botStep() {
-      if (!alive || m.hand.over || m.hand.current === 0) return;
-      const pi = m.hand.current;
-      if (m.hand.phase === 'draw') {
-        C.draw(m, pi, C.botDraw(m, pi));
-      } else {
-        C.discard(m, pi, C.botDiscard(m, pi));
-      }
-      lastMsg = describe(m.hand.lastMove);
+    // Toda mudança na mesa (sua jogada, bot, ou outra pessoa online).
+    table.onChange(() => {
+      if (!alive) return;
+      m = table.state();
+      const h = m.hand;
+      const moveKey = `${m.handNo}|${h.stock.length}|${h.pile.length}|${JSON.stringify(h.lastMove)}`;
+      if (h.lastMove && moveKey !== prevMove) lastMsg = describe(h.lastMove);
+      prevMove = moveKey;
+      if (h.current !== 0 || h.phase !== 'discard') selected = null;
       render();
-      if (m.hand.over && m.hand.winner != null) social.event('win', m.hand.winner);
-    }
+      if (h.over && h.winner != null && winAnnounced !== m.handNo) {
+        winAnnounced = m.handNo;
+        social.event('win', h.winner);
+      }
+    });
 
     function humanDraw(from) {
       const h = m.hand;
       if (h.over || h.current !== 0 || h.phase !== 'draw') return;
       if (from === 'discard' && !C.topDiscard(m)) return;
-      C.draw(m, 0, from);
       selected = null;
-      render();
+      table.act({ type: 'draw', from });
     }
 
     function onCard(id) {
@@ -136,16 +142,13 @@
     }
 
     function humanDiscard(id) {
-      if (C.discard(m, 0, id)) {
-        selected = null;
-        lastMsg = describe(m.hand.lastMove);
-      }
-      render();
-      if (m.hand.over && m.hand.winner === 0) social.event('win', 0);
+      selected = null;
+      table.act({ type: 'discard', id });
     }
 
     function showResult() {
-      if (!alive || document.querySelector('.modal-back')) return;
+      if (!alive || !m.hand.over || resultShownFor === m.handNo || document.querySelector('.modal-back')) return;
+      resultShownFor = m.handNo;
       const h = m.hand;
       const w = h.winner;
       const won = w === 0;
@@ -158,21 +161,24 @@
           el('p', {}, won ? `Você bateu e ganhou ${PRIZE} fichas!` : `${m.players[w].name} bateu. Você perdeu ${LOSS} fichas.`),
           el('div', { class: 'win-groups' }, h.groups.map((g) => el('div', { class: 'card-group' }, C.sortCards(g, 'valor').map((c) => playingCard(c, { cls: 'small' }))))));
       }
-      modal(won ? '🏆 Você bateu!' : w == null ? 'Empate' : 'Fim da mão', body, [
-        { label: 'Sair', onclick: () => ctx.exit() },
-        { label: 'Próxima mão', primary: true, onclick: () => { C.startHand(m); lastMsg = ''; selected = null; render(); } },
+      closeModal = modal(won ? '🏆 Você bateu!' : w == null ? 'Empate' : 'Fim da mão', body, [
+        { label: 'Sair', onclick: () => { table.leave(); ctx.exit(); } },
+        { label: 'Próxima mão', primary: true, onclick: () => { closeModal = null; lastMsg = ''; selected = null; table.next(); } },
       ]);
     }
 
     function leave() {
-      modal('Sair da partida?', el('p', {}, 'A mão em andamento será perdida.'), [
+      modal('Sair da partida?', el('p', {}, table.online
+        ? 'Você sai da mesa e um bot assume o seu lugar.'
+        : 'A mão em andamento será perdida.'), [
         { label: 'Continuar', onclick: () => {} },
-        { label: 'Sair', primary: true, onclick: () => ctx.exit() },
+        { label: 'Sair', primary: true, onclick: () => { table.leave(); ctx.exit(); } },
       ]);
     }
 
-    ctx.onExit(() => { alive = false; clearTimeout(timer); social.destroy(); });
+    ctx.onExit(() => { alive = false; table.destroy(); social.destroy(); });
     render();
+    table.start();
   }
 
   root.CachetaUI = { mount };
